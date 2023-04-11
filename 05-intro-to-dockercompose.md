@@ -19,7 +19,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - /var/lib/postgres/data
+      - ./postgres-db-volumne:/var/lib/postgres/data
 
   app:
     build: 
