@@ -49,11 +49,17 @@ This command will build the Docker image using the Dockerfile in the current dir
 To run the database container, we need to run the following command:
 
 ```bash
-docker run -d --name postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=fastapi -p 5432:5432 postgres
+docker run -d --name postgres \
+    -e POSTGRES_USER=postgres \
+    -e POSTGRES_PASSWORD=postgres \
+    -e POSTGRES_DB=fastapi \
+    -v $(pwd)/postgres-db-volumne:/var/lib/postgresql/data \
+    -p 5432:5432 \
+    postgres
 ```
 
 This command will run the container in detached mode, which means that the container will run in the background. The `--name` flag specifies the name of the container, and the `-p` flag specifies the port mapping. The first port number is the port on the host machine, and the second port number is the port on the container. In this case, we are mapping the port 5432 on the host machine to the port 5432 on the container. The `-e` flag specifies the environment variables. The `POSTGRES_USER` environment variable specifies the username for the database, the `POSTGRES_PASSWORD` environment variable specifies the password for the database, and the `POSTGRES_DB` environment variable specifies the name of the database. You could also specify these environment variables in a `.env` file, and then use the `--env-file` flag to specify the path to the `.env` file.
-The last argument is the name of the image.
+The last argument is the name of the image. The `-v` flag is for mounting a volume. The first argument is the path to the volume on the host machine, and the second argument is the path to the volume on the container. In this case, we are mounting the `postgres-db-volumne` directory on the host machine to the `/var/lib/postgresql/data` directory on the container. This will allow us to persist the data in the database.
 
 ## Connecting to the Database
 To connect to the database, we need to use a database client. We can use the `psql` command-line tool to connect to the database. To connect to the database, we need to run the following command:
