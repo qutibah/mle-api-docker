@@ -19,6 +19,7 @@ services:
       context: service
       dockerfile: Dockerfile
     container_name: fastapi_compose
+    restart: always
     environment:
       DB_CONN: ${DB_CONN}
     ports:

@@ -107,18 +107,31 @@ docker ps
 
 So please add the postgres container to the network you created before.
 
-### Running the Fastapi Container
+### Running the FastAPI Container
 To run the Docker container, we need to run the following command:
 
 ```bash
 docker run -d --name fastapi --network <network_name> -e DB_CONN='postgresql://postgres:postgres@postgres:5432/postgres' -p 8000:8000 fastapi  
 ```
 
-This command will run the Docker container in detached mode, mapping the port 8000 on the host machine to the port 8000 on the container. The `-d` flag specifies that the container should run in detached mode, and the `-p` flag specifies the port mapping. The `-e` flag specifies the environment variable that is used to connect to the database. And see how we used in the sqlalchemy connector string now the name of the postgres container as the host and not localhost anymore like in the .env file. This is because the container is now running in the same network as the postgres container and can be addressed now by using its name as the hostname: When two containers are joined to the same user-defined bridge network, one container is able to address another by using its name (as the hostname).
+This command will run the Docker container in detached mode, mapping the port 8000 on the host machine to the port 8000 on the container. The `-d` flag specifies that the container should run in detached mode, and the `-p` flag specifies the port mapping. The `-e` flag specifies the environment variable that is used to connect to the database. Did you noticed that how we used in the sqlalchemy connector string now the name of the postgres container as the host instead of the localhost like we did in the .env file. This is because the container is now running in the same network as the postgres container and can be addressed now by using its name as the hostname: When two containers are joined to the same user-defined bridge network, one container is able to address another by using its name (as the hostname).
+
+
+#### Table of Docker run flags
+
+| Flag | Description |
+| --- | --- |
+| -d | Run the container in detached mode (in the background) |
+| --name | Name of the container |
+| --network | Name of the network to connect to |
+| -e | Environment variable |
+| -p | Port mapping |
+
+
 
 TL;DR
 
-- For containers to communicate with other, they need to be part of the same “network”.
+- For containers to communicate with each other, they need to be part of the same “network”.
 
 - Docker creates a virtual network called bridge by default, and connects your containers to it.
 

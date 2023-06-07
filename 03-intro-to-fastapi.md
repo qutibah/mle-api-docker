@@ -1,6 +1,6 @@
 # Application Programming Interfaces (APIs)
 
-APIs are a set of protocols and tools that allow different software applications to communicate with each other. APIs have become an essential part of modern software development, enabling developers to build complex systems that integrate with other applications seamlessly.
+APIs are a set of protocols and tools that allow different software applications to communicate with each other. They have become an essential part of modern software development, enabling developers to build complex systems that integrate with other applications seamlessly.
 
 FastAPI is a Python-based web framework that has gained popularity among developers for its speed, simplicity, and easy-to-use API building capabilities. It leverages the latest Python features and best practices to provide a fast, scalable, and reliable API framework.
 
@@ -10,7 +10,11 @@ In summary, FastAPI is a modern and powerful Python-based framework that provide
 
 ### Building a FastAPI Application
 
-In this section, we will build a simple FastAPI application that will allow us to explore the framework's features and capabilities. We will use the FastAPI framework to build a simple API that will allow us to perform basic CRUD operations on a database of users. We will use the SQLite database for this example, but you can use any database that is supported by FastAPI. We will also use the SQLAlchemy ORM to interact with the database. SQLAlchemy is a Python library that provides a simple and powerful abstraction layer for interacting with databases. It allows us to write SQL queries using Python syntax, which makes it easy to build complex queries and perform database operations. 
+In this section, we will build a simple FastAPI application that will allow us to explore the features and capabilities of the framework. 
+
+We will use the FastAPI framework to build a simple API that will allow us to perform basic CRUD operations on a database of users. 
+
+In this example we will use the Postgres database, but you can use any database that is supported by FastAPI. We will also use the SQLAlchemy ORM to interact with the database. SQLAlchemy is a Python library that provides a simple and powerful abstraction layer for interacting with databases. It allows us to write SQL queries using Python syntax, which makes it easy to build complex queries and perform database operations. 
 
 You can find the code for this example in the [service folder](./service/main.py).
 
@@ -20,9 +24,9 @@ We created the database in the [Docker Intro](02-intro-to-docker.md) section.
 #### Modular App Structure
 When writing an app, it is best to create independent and modular python code. Here we will discuss the following constituent files of our app, database.py, models.py, schemas.py, main.py, and load.py.
 
-Ideally, you should only have to define your database models once! Using SQLAlchemy’s `declarative_base()` and `Base.metadata.create_all()` allows you to write just one class per table to use in the app, to use in Python outside of the app and to use in the database. With a separate `database.py` and models.py file, we establish our database table classes and connection a single time, then call them later as needed.
+Ideally, you should only have to define your database models once! Using SQLAlchemy’s `declarative_base()` and `Base.metadata.create_all()` allows you to write just one class per table to use in the app, to use in Python outside of the app and to use in the database. With a separate `database.py` and `models.py` file, we establish our database table classes and connection a single time, then call them later as needed.
 
-To avoid confusion between the SQLAlchemy models and the Pydantic models, we will have the file `models.py` with the SQLAlchemy models, and the file `schemas.py` with the Pydantic models. Also of note is that SQLAlchemy and Pydantic use slightly different syntax to define models, as seen in the below files.
+To avoid confusion between the SQLAlchemy models and the Pydantic models, we will call the file `models.py` with the SQLAlchemy models, and the file `schemas.py` with the Pydantic models. Also of note is that SQLAlchemy and Pydantic use slightly different syntax to define models, as seen in the below files.
 
 #### Creating the Database Connection
 
@@ -46,6 +50,8 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 ```
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine) is enabling us to interact with the database. The `autocommit` and `autoflush` are set to `False`, which means that SQLAlchemy will not automatically commit changes to the database or automatically refresh objects from the database. The bind parameter is set to the engine we created earlier.
 
 ##### Declarative Base and MetaData
 The `declarative_base()` base class contains a `MetaData` object where newly defined Table objects are collected. This MetaData object is accessed when we call the line `models.Base.metadata.create_all()` to create all of our tables.
@@ -194,6 +200,17 @@ def delete(id: int, db: Session = Depends(get_db)):
 The `get_db()` function ensures that any route passed this function ought to have our SessionLocal database connection when needed and that the session is closed after use.
 
 The `@app.get()` decorator is used to define a route. The `@app.post()` decorator is used to define a route that accepts POST requests. The `@app.put()` decorator is used to define a route that accepts PUT requests. The `@app.delete()` decorator is used to define a route that accepts DELETE requests.
+
+#### Table of FastAPI Decorators
+
+| Decorator | HTTP Method | Description |
+| --- | --- | --- |
+| `@app.get()` | GET | Retrieve data |
+| `@app.post()` | POST | Create data |
+| `@app.put()` | PUT | Update data |
+| `@app.delete()` | DELETE | Delete data |
+
+
 
 The `response_model` parameter is used to define the response model for the route. The `Depends()` function is used to define dependencies for the route. The `db: Session = Depends(get_db)` parameter is used to define the database session for the route.
 
