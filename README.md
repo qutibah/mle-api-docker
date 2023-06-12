@@ -9,7 +9,7 @@ This repo contains a [notebook](01-intro-to-json.ipynb) explaining how you can w
 
 ### Environment
 
-You can find the requirements file in the server directory. Use this file to create a new environment for this task.
+You can find the requirements file in the service directory. Use this file to create a new environment for this task.
 
 ```sh
 pyenv local 3.11.3
