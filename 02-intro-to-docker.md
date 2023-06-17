@@ -45,8 +45,9 @@ docker build -t postgres .
 
 This command will build the Docker image using the Dockerfile in the current directory. The `-t` flag specifies the name of the image, and the `.` specifies the path to the Dockerfile.
 
+
 ## Running the Database Container
-To run the database container, we need to run the following command:
+A Docker container is defined as a running instance of a Docker image. To run the database container, we need to run the following command:
 
 ```bash
 docker run -d --name postgres \
