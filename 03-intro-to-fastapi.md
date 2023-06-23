@@ -14,7 +14,7 @@ In this section, we will build a simple FastAPI application that will allow us t
 
 We will use the FastAPI framework to build a simple API that will allow us to perform basic CRUD operations on a database of users. 
 
-In this example we will use the Postgres database, but you can use any database that is supported by FastAPI. We will also use the SQLAlchemy ORM to interact with the database. SQLAlchemy is a Python library that provides a simple and powerful abstraction layer for interacting with databases. It allows us to write SQL queries using Python syntax, which makes it easy to build complex queries and perform database operations. 
+In this example we will use the Postgres database, but you can use any database that is supported by FastAPI. We will also use the SQLAlchemy ORM to interact with the database. 
 
 You can find the code for this example in the [service folder](./service/main.py).
 
@@ -76,7 +76,7 @@ Once we have our database connection and session set up, we are ready to build o
 
 #### Creating the Database Models
 
-The `models.py` file contains the code to create the database models. We will use the SQLAlchemy ORM to interact with the database. SQLAlchemy is a Python library that provides a simple and powerful abstraction layer for interacting with databases. It allows us to write SQL queries using Python syntax, which makes it easy to build complex queries and perform database operations.
+The `models.py` file contains the code to create the database models. As before, we will use the SQLAlchemy ORM to interact with the database. 
 
 ```python
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
