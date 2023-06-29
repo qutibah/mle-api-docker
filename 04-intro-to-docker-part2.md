@@ -6,7 +6,7 @@ For that please create a Dockerfile in the service folder with the following con
 
 ```Dockerfile
 # Use the official Python image as the base image
-FROM python:3.8-slim-buster
+FROM python:3.10-slim-buster
 
 # Set the working directory
 WORKDIR /app
@@ -31,6 +31,9 @@ The Dockerfile specifies the following:
 - The dependencies to install.
 - The port to expose. When we run the container, we will map this port to a port on the host machine. This makes the port accessible from outside the container.
 - The command to run when the container starts.
+
+Change the `DB_CONN` in the `.env` file to `DB_CONN=postgresql://postgres:postgres@postgres:5432/fastapi`.
+
 
 ## Building the Docker Image
 To build the Docker image, we need to run the following command inside the service folder:
