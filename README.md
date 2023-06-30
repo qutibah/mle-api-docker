@@ -17,9 +17,15 @@ python -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -r service/requirements.txt
+pip install jupyter
 ```
 
 ### Setup
 
 You need to install Docker and Docker-Compose for this task. I would highly recommend to install the Desktop version (for MacOS with M1/M2 chips there is no alternative). You can find the installation instructions [here](https://docs.docker.com/get-docker/).
 
+Also you need to install `psql` to interact with the database. 
+
+```sh
+brew install postgresql@15
+```
