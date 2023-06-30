@@ -43,7 +43,7 @@ Another benefit of docker compose is that in yaml files you can set the environm
 
 For building the app we need to specify a Dockerfile. We will use the Dockerfile we created earlier in the service folder. The Dockerfile is specified in the build context.
 
-Change the DB_CONN in the .env file to DB_CONN=postgresql://postgres:postgres@postgres_compose:5432/fastapi.
+Change the `DB_CONN` in the `.env` file to `DB_CONN=postgresql://postgres:postgres@postgres_compose:5432/fastapi`.
 
 ## Running the Docker Compose Application
 To run the Docker Compose application, we need to run the following command:
