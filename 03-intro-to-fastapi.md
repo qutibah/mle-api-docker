@@ -12,7 +12,7 @@ In summary, FastAPI is a modern and powerful Python-based framework that provide
 
 In this section, we will build a simple FastAPI application that will allow us to explore the features and capabilities of the framework. 
 
-We will use the FastAPI framework to build a simple API that will allow us to perform basic CRUD operations on a database of users. 
+We will use the FastAPI framework to build a simple API in Python. It will allow us to perform basic CRUD operations (Create, Update, Read, and Delete: fundamental actions that can be performed on data stored in databases) on a database of users. 
 
 In this example we will use the Postgres database, but you can use any database that is supported by FastAPI. We will also use the SQLAlchemy ORM to interact with the database. 
 
@@ -199,7 +199,7 @@ def delete(id: int, db: Session = Depends(get_db)):
 
 The `get_db()` function ensures that any route passed this function ought to have our SessionLocal database connection when needed and that the session is closed after use.
 
-The `@app.get()` decorator is used to define a route. The `@app.post()` decorator is used to define a route that accepts POST requests. The `@app.put()` decorator is used to define a route that accepts PUT requests. The `@app.delete()` decorator is used to define a route that accepts DELETE requests.
+The `@app.get()` decorator is used to define a route, in this case the route is "/users". The `@app.post()` decorator is used to define a route that accepts POST requests (a HTTP method used to send data to a server). The `@app.put()` decorator is used to define a route that accepts PUT requests. The `@app.delete()` decorator is used to define a route that accepts DELETE requests.
 
 #### Table of FastAPI Decorators
 
