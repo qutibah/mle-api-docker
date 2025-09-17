@@ -103,17 +103,21 @@ jobs:
           chmod +x .github/workflows/REGX_test_import_libraries_w_python.sh
           ./.github/workflows/REGX_test_import_libraries_w_python.sh
           echo "$LOG_NOTEBOOK Notebook import list generated."
-
+        
       - name: Install dependencies
+        shell: pwsh
         run: |
-          echo "$LOG_SETUP Python + venv setup (Windows + Git Bash style)"
-          echo "Note: Commands run under Bash (not PowerShell)."
-          python --version
+          $req = Get-ChildItem -Recurse -Filter requirements.txt -File `
+          | Where-Object { $_.FullName -notmatch '\\\.venv\\' } `
+          | Select-Object -First 1
+          if (-not $req) {
+          Write-Host "No requirements.txt found. Skipping."
+           exit 0
+          }
+          Write-Host "Using $($req.FullName)"
           python -m venv .venv
-          source .venv/Scripts/activate
-          python -m pip install --upgrade pip
-          pip list
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          .\.venv\Scripts\python -m pip install --upgrade pip
+          .\.venv\Scripts\python -m pip install -r "$($req.FullName)"
           echo "$LOG_SETUP Dependencies installed."
 
       - name: Test the import libraries
