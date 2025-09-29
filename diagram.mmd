@@ -1,0 +1,48 @@
+graph TD
+    %% --- Subgraphs for Organization ---
+    subgraph Client [Client Environment]
+        C[Web Browser or cURL]
+    end
+
+    subgraph Host [Docker Host / Local Machine]
+        direction LR
+        S[Docker Socket]
+        N(User-Defined Bridge Network)
+        
+        subgraph FastAPI_Service [FastAPI Service]
+            DAPP(Docker Container: fastapi)
+            DAPP_FAS(FastAPI Application)
+        end
+        
+        subgraph Database_Service [Database Service]
+            DDB(Docker Container: postgres)
+            DDB_PG(PostgreSQL Database)
+        end
+    end
+
+    %% --- Components & Dependencies ---
+    C -- HTTP Request --> HPN[Host Port: 8000]
+    HPN -- "-p 8000:8000 Mapping" --> DAPP
+    DAPP -- "uvicorn main:app" --> DAPP_FAS
+    DAPP_FAS -- Reads Env: DB_CONN --> N
+    DDB -- Runs --> DDB_PG
+    DDB_PG -- Persists Data --> VOL[Volume: postgres-db-volume]
+    DAPP --- N
+    DDB --- N
+    DAPP_FAS -- "SQL Queries (Host: postgres)" --> DDB
+    DDB -- Returns Data --> DAPP_FAS
+    DAPP -- HTTP Response --> HPN
+    HPN --> C
+    S -- Manages & Runs --> DAPP
+    S -- Manages & Runs --> DDB
+    S -- Creates --> N
+    
+    %% --- Styling ---
+    style C fill:#fff2cc,stroke:#d6b656
+    style HPN fill:#e6e6fa,stroke:#9370db
+    style DAPP fill:#f0f8ff,stroke:#6495ed
+    style DDB fill:#e6f7ff,stroke:#00bfff
+    style DAPP_FAS fill:#ddeeff,stroke:#3366cc
+    style DDB_PG fill:#cceedd,stroke:#339966
+    style VOL fill:#d5e8d4,stroke:#82b366
+    style N fill:#ffe6cc,stroke:#ff9900

@@ -29,3 +29,7 @@ Also you need to install `psql` to interact with the database.
 ```sh
 brew install postgresql@15
 ```
+
+### Diagram
+When you are done with the exercise this is the structure you will have created. ![diagram](images/diagram.png)
+
