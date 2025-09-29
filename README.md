@@ -11,10 +11,34 @@ This repo contains a [notebook](01-intro-to-json.ipynb) explaining how you can w
 
 You can find the requirements file in the service directory. Use this file to create a new environment for this task.
 
-```sh
+
+#### **`macOS`**
+```BASH
 pyenv local 3.11.3
 python -m venv .venv
 source .venv/bin/activate
+pip install --upgrade pip
+pip install -r service/requirements.txt
+pip install jupyter
+```
+#### **`WindowsOS`**
+For `PowerShell` CLI :
+
+```PowerShell
+pyenv local 3.11.3
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r service/requirements.txt
+pip install jupyter
+```
+
+For `Git-Bash` CLI :
+
+```
+pyenv local 3.11.3
+python -m venv .venv
+source .venv/Scripts/activate
 pip install --upgrade pip
 pip install -r service/requirements.txt
 pip install jupyter
@@ -26,10 +50,25 @@ You need to install Docker and Docker-Compose for this task. I would highly reco
 
 Also you need to install `psql` to interact with the database. 
 
+#### **`macOS`**
 ```sh
-brew install postgresql@15
+brew install postgresql@17
+
+# To start services
+brew services start postgresql@17
+
+# To stop
+brew services stop postgresql@17
 ```
+
+In case `psql` doesn't work:
+```sh
+brew install libpq
+brew link --force libpq
+```
+
+#### **`WindowsOS`**
+Please follow the installation instructions [here](https://www.w3schools.com/postgresql/postgresql_install.php).
 
 ### Diagram
 When you are done with the exercise this is the structure you will have created. ![diagram](images/diagram.png)
-
