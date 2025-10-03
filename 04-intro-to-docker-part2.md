@@ -1,12 +1,12 @@
 # FastAPI and Docker
 
-Now that we created the api that connects to the Database, we can create a Docker image for the api and run it in a container. We will use the Dockerfile that we created in the previous section to create the Docker image. We will also use the docker-compose.yml file to run the api in a container.
+Now that we created the API that connects to the Database, we can create a Docker image for the API and run it in a container. We will use the Dockerfile that we created in the previous section to create the Docker image. We will also use the **docker-compose.yml** file to run the API in a container.
 
-For that please create a Dockerfile in the service folder with the following content:
+For that please create a Dockerfile in the **\service** folder with the following content:
 
 ```Dockerfile
 # Use the official Python image as the base image
-FROM python:3.10-slim-buster
+FROM python:3.11.3-slim-buster
 
 # Set the working directory
 WORKDIR /app
@@ -15,6 +15,7 @@ WORKDIR /app
 COPY . /app
 
 # Install the dependencies
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Expose the port
@@ -32,20 +33,20 @@ The Dockerfile specifies the following:
 - The **port** to expose. When we run the container, we will map this port to a port on the host machine. This makes the port accessible from outside the container.
 - The **command** to run when the container starts.
 
-Change the **`DB_CONN`** in the **`.env`** file to **`DB_CONN=postgresql://postgres:postgres@postgres:5432/fastapi`**.
+Change the **`DB_CONN`** in the **`.env`** file to **`DB_CONN='postgresql://postgres:postgres@postgres_cont:5432/fastapi_db'`**.
 
 
 ## Building the Docker Image
-To build the Docker image, we need to run the following command inside the service folder:
+To build the Docker image, we need to run the following command inside the **/service** folder:
 
 ```bash
-docker build -t fastapi .
+docker build -t fastapi_im .
 ```
 
 This command will build the Docker image using the Dockerfile in the current directory. The **`-t`** flag specifies the name of the image, and the **`.`** specifies the path to the Dockerfile.
 
 ## Networking in Docker
-Docker containers are **isolated** from each other. This means that they can’t communicate with each other by default. This isolation is a good thing, because it prevents containers from interfering with each other. However, it also means that we need to configure the networking to allow containers to communicate with each other. In the real world, beyond the realm of the simple hello-world tutorial, running just one container isn’t enough for most apps. A modern application typically consists of a few components – such as a **database**, a **web server**, or some **microservices**.
+**Docker containers are isolated from each other.** This means that they can’t communicate with each other by default. This isolation is a good thing, because it prevents containers from interfering with each other. However, it also means that we need to configure the networking to allow containers to communicate with each other. In the real world, beyond the realm of the simple hello-world tutorial, running just one container isn’t enough for most apps. A modern application typically consists of a few components – such as a **database**, a **web server**, or some **microservices**.
 
 So if you want to run all of your components in containers, how can the applications talk to each other?
 
@@ -59,10 +60,10 @@ Two containers can talk to each other in one of two ways, usually:
 
 - **Sharing files on disk**: Some applications communicate by reading and writing files. These kinds of applications can communicate by writing their files into a volume, which can also be shared with other containers.
 
-We’ll look at applications that use networking as the primary way they either expose or consume services. We’ll talk about how to set up a network, which allows Docker containers on the same host to communicate with other.
+We’ll look at applications that use networking as the primary way: they either expose or consume services. We’ll talk about how to set up a network, which allows Docker containers on the same host to communicate with other.
 
 ### Building your (Virtual) Network
-Docker containers can communicate with each other using a virtual network. The simplest network in Docker is the bridge network. It’s also Docker’s default networking driver. In a bridge network, each container is assigned its own IP address. So containers can communicate with each other by IP. But if you use the default bridge network, it means every container can see every other container.
+Docker containers can communicate with each other using a virtual network. The simplest network in Docker is the **bridge network**. It’s also Docker’s default networking driver. In a bridge network, each container is assigned its **own IP address**. So containers can communicate with each other by IP. But if you use the default bridge network, it means **every container can see every other container**.
 To get the IP address of a container, we can use the **`docker inspect`** command:
 
 ```bash
@@ -70,10 +71,10 @@ docker inspect <container_id> | grep IPAddress
 ```
 
 If you only use the default bridge network, then all your containers can see and access other containers’ ports. This isn’t always what you want.
-Another “feature” of the default bridge network, is that containers can only talk to each other by their IP address. Obviously, this is a bit brittle, because IP addresses can change. 
-The second option, the user-defined bridge, lets you have a bit more control. In a user-defined bridge network, you can be more explicit about who joins the network, and you get an added bonus:
+**Another “feature” of the default bridge network, is that containers can only talk to each other by their IP address**. Obviously, this is a bit brittle, because IP addresses can change. 
+The second option, **the user-defined bridge, lets you have a bit more control**. In a user-defined bridge network, you can be more explicit about who joins the network, and you get an added bonus:
 
-…containers can be addressed by their name or alias.
+**…containers can be addressed by their name or alias.**
 
 
 To create a virtual network, we can use the **`docker network create`** command:
@@ -114,25 +115,27 @@ So please add the postgres container to the network you created before.
 To run the Docker container, we need to run the following command:
 
 ```bash
-docker run -d --name fastapi --network <network_name> -e DB_CONN='postgresql://postgres:postgres@postgres:5432/postgres' -p 8000:8000 fastapi  
+docker run -d --name fastapi_cont --network <network_name> -e DB_CONN='postgresql://postgres:postgres@postgres_cont:5432/fastapi_db' -p 8000:8000 fastapi_im
 ```
 
-This command will run the Docker container in detached mode, mapping the port 8000 on the host machine to the port 8000 on the container. The **`-d`** flag specifies that the container should run in detached mode, and the **`-p`** flag specifies the port mapping. The **`-e`** flag specifies the environment variable that is used to connect to the database. Did you noticed that how we used in the sqlalchemy connector string now the name of the postgres container as the host instead of the localhost like we did in the .env file. This is because the container is now running in the same network as the postgres container and can be addressed now by using its name as the hostname: When two containers are joined to the same user-defined bridge network, one container is able to address another by using its name (as the hostname).
+This command will run the Docker container in detached mode, mapping the port 8000 on the host machine to the port 8000 on the container. The **`-d`** flag specifies that the container should run in detached mode, and the **`-p`** flag specifies the port mapping. The **`-e`** flag specifies the environment variable that is used to connect to the database.  
+
+Did you notice how, in the SQLAlchemy connection string, we used the name of the postgres container as the host instead of localhost, like we did in the **`.env`** file? This is because the container is now **running in the same network** as the postgres container and can be addressed now by using its name as the hostname: when two containers are joined to the same user-defined bridge network, one container is able to address another by using its name (as the hostname).
 
 
 #### Table of Docker run flags
 
 | Flag | Description |
 | --- | --- |
-| -d | Run the container in detached mode (in the background) |
-| --name | Name of the container |
-| --network | Name of the network to connect to |
-| -e | Environment variable |
-| -p | Port mapping |
+| `-d` | Run the container in detached mode (in the background) |
+| `--name` | Name of the container |
+| `--network` | Name of the network to connect to |
+| `-e` | Environment variable |
+| `-p` | Port mapping |
 
 
 
-TL;DR
+### TL;DR
 
 - For containers to communicate with each other, they need to be part of the same “network”.
 
@@ -145,24 +148,24 @@ TL;DR
 
 ## Stopping the container
 
-To stop the container, we can use the **`docker stop`** command:
+Please stop the containers using the **`docker stop`** command:
 
 ```bash
 docker stop <container_id>
 ```
 
-This command will stop the container with the specified ID.
 
-To find the id of the container, we can use the **`docker ps`** command:
+To find the id of the container, use the **`docker ps`** command:
 
 ```bash
 docker ps
 ```
 
-This command will list all running containers.
 
 
 
 
 ## Summary
-In this lesson, we learned about Docker and how we can use it to build and run a Docker container. We also learned how to build a Docker image and run a Docker container. Finally, we learned how to test the Docker container by sending requests to the FastAPI application.
+In these lessons we learned about **Docker** and how to use it to build and run Docker images and containers. We also learned how to test the Docker container by sending requests to the FastAPI application. Finally, we learned how to connect different containers manually through a network.
+
+In the next lesson we'll learn how to use **Docker Compose** to build, run and orchestrate our multi-container Docker application using a single file.

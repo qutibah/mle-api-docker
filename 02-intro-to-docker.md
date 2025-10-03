@@ -9,14 +9,14 @@ Overall, Docker provides a powerful and flexible toolset for developing and depl
 
 Let's take a look at how we can use Docker to build and run a simple FastAPI application.
 
-## Building a Docker Image
-For building a Docker image, we need to create a Dockerfile. A Dockerfile is a text file that contains the instructions for building a Docker image. It specifies the base image, environment variables, and application code that will be used to build the image. The Dockerfile for our example is shown below:
+## Creating a Dockerfile
+For building a Docker image, we need to create a Dockerfile. **A Dockerfile is a text file that contains the instructions for building a Docker image.** It specifies the base image, environment variables, and application code that will be used to build the image. 
 
 First we need a Dockerfile for our database. We will use the official PostgreSQL image as the base image. The Dockerfile for our database is shown below:
 
 ```Dockerfile
 # Use the official PostgreSQL image as the base image
-FROM postgres:13.2
+FROM postgres:17
 
 # Set the working directory
 WORKDIR /app
@@ -29,34 +29,34 @@ CMD ["postgres"]
 ``` 
 
 The Dockerfile specifies the following:
-- The base image to use for building the image. In this case, we are using the official PostgreSQL image, which is based on the Debian Linux distribution.
-- The working directory, which is the directory where the application code will be copied to.
-- The port to expose. When we run the container, we will map this port to a port on the host machine. This makes the port accessible from outside the container.
-- The command to run when the container starts.
+- The **base image** to use for building the image. In this case, we are using the official PostgreSQL image, which is based on the Debian Linux distribution.
+- The **working directory**, which is the directory where the application code will be copied to.
+- The **port** to expose. When we run the container, we will map this port to a port on the host machine. This makes the port accessible from outside the container.
+- The **command** to run when the container starts.
 
 You could add environment variables to the Dockerfile, but it is better to use a **`.env`** file or the **`-e`** flag for this. We will see how to do this in the next section.
 
 ## Building the Docker Image
-To build the Docker image, we need to run the following command:
+To build the Docker image, we need to run the following command in the Terminal (make sure Docker Desktop is **open**):
 
 ```bash
-docker build -t postgres .
+docker build -t postgres_im .
 ```
 
 This command will build the Docker image using the Dockerfile in the current directory. The **`-t`** flag specifies the name of the image, and the **`.`** specifies the path to the Dockerfile.
 
 
 ## Running the Database Container
-A Docker container is defined as a running instance of a Docker image. To run the database container, we need to run the following command:
+A **Docker container** is defined as a **running instance of a Docker image**. To run the database container, we need to run the following command:
 
 ```bash
-docker run -d --name postgres \
+docker run -d --name postgres_cont \
     -e POSTGRES_USER=postgres \
     -e POSTGRES_PASSWORD=postgres \
-    -e POSTGRES_DB=fastapi \
-    -v $(pwd)/postgres-db-volumne:/var/lib/postgresql/data \
+    -e POSTGRES_DB=fastapi_db \
+    -v $(pwd)/postgres-db-volume:/var/lib/postgresql/data \
     -p 5432:5432 \
-    postgres
+    postgres_im
 ```
 
 This command will run the container in detached mode, which means that the container will run in the background. The **`--name`** flag specifies the name of the container, and the **`-p`** flag specifies the port mapping. The first port number is the port on the host machine, and the second port number is the port on the container. In this case, we are mapping the port 5432 on the host machine to the port 5432 on the container. The **`-e`** flag specifies the environment variables. The **`POSTGRES_USER`** environment variable specifies the username for the database, the **`POSTGRES_PASSWORD`** environment variable specifies the password for the database, and the **`POSTGRES_DB`** environment variable specifies the name of the database. You could also specify these environment variables in a **`.env`** file, and then use the **`--env-file`** flag to specify the path to the **`.env`** file.
@@ -78,22 +78,21 @@ The last argument is the name of the image. The **`-v`** flag is for mounting a 
 To connect to the database, we need to use a database client. We can use the **`psql`** command-line tool to connect to the database. To connect to the database, we need to run the following command:
 
 ```bash
-psql -h localhost -p 5432 -U postgres
+psql -h localhost -p 5432 -U postgres -d fastapi_db
 ```
 
-This command will connect to the database using the **`psql`** tool. The **`-h`** flag specifies the host, the **`-p`** flag specifies the port, and the **`-U`** flag specifies the username. The default password for the **`postgres`** user is **`postgres`**.
+This command will connect to the database using the **`psql`** tool. The **`-h`** flag specifies the host, the **`-p`** flag specifies the port, the **`-U`** flag specifies the username and the **`-d`** flag specifies the name of the database. The default **password** for the **`postgres`** user is **`postgres`**.
 
 ## Creating the Database
-We already defined a database named **`fastapi`** in the env variables in the dockerfile. But we can also create the database using the following command:
+We already defined a database named **`fastapi_db`** in the env variables in the Dockerfile. But we could also create the database using the following command:
 
 ```sql
-CREATE DATABASE fastapi;
+CREATE DATABASE fastapi_db;
 ```
-
-This command will create a database named **`fastapi`**.
+This command will create a database named **`fastapi_db`**.
 
 ## Creating the Table
-To create the table, we need to run the following command:
+To create the table, we need to run:
 
 ```sql
 CREATE TABLE users (
@@ -131,7 +130,21 @@ SELECT * FROM users;
 
 This command will return all the rows from the table.
 
-Now we created a database and a table, and we inserted some data into the table. We can now use this database in our FastAPI application.
+Now we created a database and a table, and we inserted some data into the table. We can now use this database in our FastAPI application.  
+
+But first, exit the client with **`\q`**.  
+
+### Common `psql` commands
+
+| Command         | Description                                  |
+|-----------------|----------------------------------------------|
+| `\l`            | List all databases                           |
+| `\c <db_name>`  | Connect to a specific database               |
+| `\d`            | List all tables, views, and sequences        |
+| `\dt`           | List all tables                              |
+| `\?`            | List all `psql` commands                     |
+| `\h`            | Show SQL command help (e.g., `\h SELECT`)    |
+| `\q`            | Quit the `psql` client                       |
 
 ## Stopping the container
 
@@ -143,7 +156,7 @@ docker stop <container_id>
 
 This command will stop the container with the specified ID.
 
-To find the id of the container, we can use the **`docker ps`** command:
+To find the ID of the container, we can use the **`docker ps`** command:
 
 ```bash
 docker ps
@@ -151,4 +164,10 @@ docker ps
 
 This command will list all running containers.
 
-But for now we need the container to be running, so we can continue with the next steps.
+But for now we need the container to be running so we can continue with the next steps.
+
+If you stopped the container, you can start it again by:
+
+```bash
+docker start <container_id>
+```
