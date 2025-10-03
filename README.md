@@ -9,7 +9,7 @@ This repo contains a [notebook](01-intro-to-json.ipynb) explaining how you can w
 
 ### Environment
 
-You can find the requirements file in the service directory. Use this file to create a new environment for this task.
+You can find the requirements file in the **/service** directory. Use this file to create a new environment for this task.
 
 
 #### **`macOS`**
@@ -46,9 +46,9 @@ pip install jupyter
 
 ### Setup
 
-You need to install Docker and Docker-Compose for this task. I would highly recommend to install the Desktop version (for MacOS with M1/M2 chips there is no alternative). You can find the installation instructions [here](https://docs.docker.com/get-docker/).
+- You need to install **Docker** for this task. Please **install the Desktop version** (for MacOS with M1/M2 chips there is no alternative). You can find the installation instructions [**here**](https://docs.docker.com/get-docker/).
 
-Also you need to install `psql` to interact with the database. 
+- Also you need to install `psql` to interact with the database. 
 
 #### **`macOS`**
 ```sh
