@@ -50,13 +50,13 @@ Another benefit of Docker Compose is that in YAML files you can set the environm
 
 For building the app we need to specify a Dockerfile. We will use the Dockerfile we created earlier in the **\service** folder. The Dockerfile is specified in the **build** context.
 
-Change the **`DB_CONN`** in the **`.env`** file to **`DB_CONN='postgresql://postgres:postgres@postgres_compose:5432/fastapi_db'`**.
+Change the **`DB_CONN`** in the **`.env`** file to **`DB_CONN='postgresql://postgres:postgres@db:5432/fastapi_db'`**.
 
 ## Running the Docker Compose Application
 To run the Docker Compose application, we need to run the following command:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 This command will run the Docker Compose application in detached mode. The **`-d`** flag specifies that the application should run in detached mode.
@@ -65,7 +65,7 @@ This command will run the Docker Compose application in detached mode. The **`-d
 To stop the Docker Compose application, we need to run the following command:
 
 ```bash
-docker-compose stop
+docker compose stop
 ```
 
 This command will stop the Docker Compose application.
@@ -74,7 +74,7 @@ This command will stop the Docker Compose application.
 To view the logs for the Docker Compose application, we need to run the following command:
 
 ```bash
-docker-compose logs -f
+docker compose logs -f
 ```
 
 This command will display the logs for the Docker Compose application. The **`-f`** flag specifies that the logs should be displayed in real-time.
@@ -84,12 +84,12 @@ This command will display the logs for the Docker Compose application. The **`-f
 
 | Command                                     | Description |
 |--------------------------------------------|-------------|
-| `docker-compose build`                      | Builds or rebuilds the images for the services defined in the `docker-compose.yml` file |
-| `docker-compose up`                         | Creates and starts the containers defined in the YAML file. Add `-d` to run in detached mode |
-| `docker-compose down`                       | Stops and removes containers, networks, and volumes created by `up` |
-| `docker-compose start`                      | Starts previously created containers (does not recreate or rebuild them) |
-| `docker-compose stop`                       | Stops running containers without removing them |
-| `docker-compose restart`                    | Restarts running containers |
-| `docker-compose logs`                       | Shows the logs of the containers. Add `-f` to follow logs in real time |
-| `docker-compose ps`                         | Lists the created containers and their current status |
+| `docker compose build`                      | Builds or rebuilds the images for the services defined in the `docker-compose.yml` file |
+| `docker compose up`                         | Creates and starts the containers defined in the YAML file. Add `-d` to run in detached mode |
+| `docker compose down`                       | Stops and removes containers, networks, and volumes created by `up` |
+| `docker compose start`                      | Starts previously created containers (does not recreate or rebuild them) |
+| `docker compose stop`                       | Stops running containers without removing them |
+| `docker compose restart`                    | Restarts running containers |
+| `docker compose logs`                       | Shows the logs of the containers. Add `-f` to follow logs in real time |
+| `docker compose ps`                         | Lists the created containers and their current status |
 | `docker-compose exec <service> <command>`  | Runs a command inside a running container (e.g., `docker-compose exec api bash`) |
