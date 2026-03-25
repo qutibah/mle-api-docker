@@ -10,20 +10,22 @@ FastAPI is built on top of the powerful ASGI server, which allows for high-perfo
 
 In summary, FastAPI is a modern and powerful Python-based framework that provides a fast, scalable, and easy-to-use solution for building APIs. Its popularity among developers is rapidly increasing due to its speed, simplicity, and the comprehensive features it provides out of the box.
 
-### Building a FastAPI Application
+## Building a FastAPI Application
 
-In this section, we will build a simple FastAPI application that will allow us to explore the features and capabilities of the framework. 
+In this section, we will build a simple FastAPI application that will allow us to explore the features and capabilities of the framework.
 
-We will use the FastAPI framework to build a simple API in Python. It will allow us to perform basic **CRUD operations** (Create, Update, Read, and Delete: fundamental actions that can be performed on data stored in databases) on a database of users. 
+We will use the FastAPI framework to build a simple API in Python. It will allow us to perform basic **CRUD operations** (Create, Update, Read, and Delete: fundamental actions that can be performed on data stored in databases) on a database of users.
 
-In this example we will use the **Postgres database**, but you can use any database that is supported by FastAPI. We will also use the **SQLAlchemy ORM** to interact with the database. 
+In this example we will use the **Postgres database**, but you can use any database that is supported by FastAPI. We will also use the **SQLAlchemy ORM** to interact with the database.
 
 You can find the [code](./service/main.py) for this example in the **/service** folder.
 
-#### Creating the Database
+### Creating the Database
+
 We created the database in the [Docker Intro](02-intro-to-docker.md) section.
 
 #### Modular App Structure
+
 When writing an app, it is best to create independent and modular python code. Here we will discuss the following constituent files of our app: **database.py**, **models.py**, **schemas.py**, **main.py** and **load.py**.
 
 Ideally, you should only have to define your database models once! Using SQLAlchemy’s **`declarative_base()`** and **`Base.metadata.create_all()`** allows you to write just one class per table to use in the app, to use in Python outside of the app and to use in the database. With a separate **`database.py`** and **`models.py`** file, we establish our database table classes and connection a single time, then call them later as needed.
@@ -53,12 +55,15 @@ Base = declarative_base()
 **SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)** is enabling us to interact with the database. The **`autocommit`** and **`autoflush`** are set to **`False`**, which means that SQLAlchemy will not automatically commit changes to the database or automatically refresh objects from the database. The bind parameter is set to the engine we created earlier.
 
 ##### Declarative Base and MetaData
+
 The **`declarative_base()`** base class contains a **`MetaData`** object where newly defined Table objects are collected. This MetaData object is accessed when we call the line **`models.Base.metadata.create_all()`** to create all of our tables.
 
 ##### os.getenv()
+
 The **`os.getenv()`** function returns the value of the environment variable with the specified name. To not expose our database credentials, we will use environment variables to store the database URI. We will use the **`python-dotenv`** library to load the environment variables from a **`.env`** file. In the **`.env`** file, we will store the database URI as **`DB_CONN`**. In a Docker container, we can pass the environment variables to the container using the **`-e`** flag.
 
 #### Session Local: Handling Threading Issues
+
 SQLAlchemy includes a helper object that helps with the establishment of user-defined Session scopes. This is useful for eliminating threading issues across your app.
 
 To create a session, below we use the **`sessionmaker`** function and pass it a few arguments. Sessionmaker is a factory for initializing new Session objects. Sessionmaker initializes these sessions by requesting a connection from the engine's connection pool and attaching a connection to the new Session object.
@@ -75,7 +80,7 @@ Once we have our database connection and session set up, we are ready to build o
 
 #### Creating the Database Models
 
-The **`models.py`** file contains the code to create the database models. As before, we will use the SQLAlchemy ORM to interact with the database. 
+The **`models.py`** file contains the code to create the database models. As before, we will use the SQLAlchemy ORM to interact with the database.
 
 ```python
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
@@ -97,7 +102,6 @@ Having these separate Python files is good because you can use the same model to
 
 These modular Python files can be used to reference the same models or databases in data pipelines, report generation, and anywhere else they are needed.
 
-
 #### Creating the Pydantic Models
 
 The **`schemas.py`** file contains the code to create the Pydantic models. Pydantic is a Python library that allows us to define data models using Python type annotations. It provides data validation, serialization, and deserialization out of the box, making it easy to build robust APIs.
@@ -112,12 +116,12 @@ class UserModel(BaseModel):
 
     class Config:
         orm_mode = True
-        
+
 class UserOut(BaseModel):
     id: int
     name: str
     email: str
-    
+
     class Config:
         orm_mode = True
 
@@ -125,7 +129,7 @@ class UserUpdate(BaseModel):
     name: str
     email: str
     password: str
-    
+
     class Config:
         orm_mode = True
 ```
@@ -215,8 +219,6 @@ The **`@app.get()`** decorator is used to define a route, in this case the route
 | `@app.put()` | PUT | Update data |
 | `@app.delete()` | DELETE | Delete data |
 
-
-
 The **`response_model`** parameter is used to define the response model for the route. The **`Depends()`** function is used to define dependencies for the route. The **`db: Session = Depends(get_db)`** parameter is used to define the database session for the route.
 
 ## Running the App
@@ -231,6 +233,7 @@ If your port is already in use you can use the **`--port`** parameter to specify
 Now that the app is running we can access the docs in the browser at **`http://localhost:8000/docs`**.
 
 ## Testing the App
+
 To test the app we can use the docs which you can access in the browser, or we can use the **`curl`** command to send a request to the API. Open a **new Terminal** and type the following command, which will send a **GET** request to the **`/users`** endpoint:
 
 ```bash

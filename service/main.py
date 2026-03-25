@@ -18,9 +18,11 @@ def get_db():
     finally:
         db.close()
 
+
 @app.get("/")
 def index():
     return {"data": "user list"}
+
 
 # get all user
 @app.get("/users", response_model=list[schemas.UserOut])
@@ -30,24 +32,33 @@ def get_all_user(db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
+
 # add user
 @app.post("/users", response_model=schemas.UserOut)
 def create_user(request: schemas.UserModel, db: Session = Depends(get_db)):
-    new_user = models.User(name=request.name, email=request.email, password=request.password)
+    new_user = models.User(
+        name=request.name, email=request.email, password=request.password
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
 
+
 # update user
 @app.put("/users/{id}")
 def update_user(id: int, request: schemas.UserUpdate, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == id)
-    if not user.first():
+    existing_user = user.first()
+    if existing_user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    user.update(request.dict())
+
+    for field, value in request.model_dump().items():
+        setattr(existing_user, field, value)
+
     db.commit()
     return "Updated successfully"
+
 
 # delete user
 @app.delete("/users/{id}")
