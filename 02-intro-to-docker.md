@@ -1,23 +1,60 @@
 # Docker
 
-**Docker is a popular platform for building, shipping, and running applications in containers.** Containers provide a lightweight and portable way to package and deploy software, allowing applications to run consistently across different environments, from development to production. Docker provides an easy-to-use interface for managing containers and images, making it easier for developers to create, test, and deploy applications.
+**Docker is a platform for building, shipping, and running applications in containers.** A container is a lightweight, isolated environment that packages an application together with the libraries, tools, and runtime it needs. This makes it much easier to run software consistently across different machines.
 
-With Docker, you can package an application and its dependencies into a container image, which can be easily shared and run on any system that supports Docker. Docker images can be built using a Dockerfile, which specifies the configuration of the container, such as the base image, environment variables, and application code.
+For local development, Docker is especially useful because it helps you avoid the classic "but it works on my machine" problem. Instead of installing and configuring every dependency directly on your computer, you can run those dependencies in containers with a predictable setup.
 
-Docker also provides a registry for storing and sharing Docker images, called **Docker Hub**, which contains a vast collection of pre-built images that can be used as a starting point for building custom images. But you can also create your own registry. Additionally, Docker provides a network interface for connecting containers and services, and a volume system for managing data persistence.
+In this lesson, we will use Docker to start a PostgreSQL database for the FastAPI application we will build in the next sections. The goal here is simple: get a database running, connect to it, and confirm that we can create and query data.
 
-Overall, Docker provides a powerful and flexible toolset for developing and deploying applications in a containerized environment, helping to streamline the development and deployment process and improve application reliability and scalability.
+## Why Docker Is Useful Here
 
-Let's take a look at how we can use Docker to build and run a simple FastAPI application.
+Without Docker, you would need to install PostgreSQL locally, manage its version, configure a database cluster, and make sure your app connects to the right place. Docker gives us a simpler path:
+
+- use an official PostgreSQL image
+- start a database container with one command
+- expose the database on port `5432`
+- persist the database files in a local folder
+- tear everything down and recreate it when needed
+
+This is a very common development workflow: run supporting services such as databases, caches, or message queues in containers while writing application code locally.
+
+## Core Concepts
+
+Before we start using commands, it helps to separate a few Docker terms that are easy to mix up.
+
+| Term | Meaning in this lesson |
+| --- | --- |
+| **Dockerfile** | A recipe that tells Docker how to build an image |
+| **Image** | A packaged template we can start containers from |
+| **Container** | A running instance of an image |
+| **Port mapping** | A link between a port on your machine and a port inside the container |
+| **Environment variable** | A configuration value passed into the container at startup |
+| **Volume / bind mount** | A way to store data outside the container so it survives restarts |
+
+Another helpful way to think about it:
+
+- The **Dockerfile** describes how to prepare the environment.
+- The **image** is the prepared result.
+- The **container** is the running process created from that image.
+
+## What We Are About to Build
+
+In this chapter, your local machine talks to a PostgreSQL server running inside a Docker container. The database data is stored in a local folder so that it is still there after the container stops.
+
+```mermaid
+flowchart LR
+    CLI["Your Terminal / psql"] -->|"connects to localhost:5432"| HostPort["Host Port 5432"]
+    HostPort -->|"mapped with -p 5432:5432"| Container["Docker Container: postgres_cont"]
+    Container -->|"runs"| PG["PostgreSQL Server"]
+    PG -->|"stores data in"| Volume["postgres-db-volume"]
+    CLI -.->|"optional: docker exec -it postgres_cont psql"| PG
+```
 
 ## Creating a Dockerfile
 
-For building a Docker image, we need to create a Dockerfile. **A Dockerfile is a text file that contains the instructions for building a Docker image.** It specifies the base image, environment variables, and application code that will be used to build the image.
-
-First we need a Dockerfile for our database. We will use the official PostgreSQL image as the base image. The Dockerfile for our database is shown below:
+This repository already contains a `Dockerfile` in the project root:
 
 ```Dockerfile
-# Use the official PostgreSQL image as the base image
 FROM postgres:17
 
 # Set the working directory
@@ -27,83 +64,202 @@ WORKDIR /app
 EXPOSE 5432
 
 # Run the application
-CMD ["postgres"]    
-``` 
+CMD ["postgres"]
+```
 
-The Dockerfile specifies the following:
+This file is intentionally small because it builds on top of the official PostgreSQL image.
 
-- The **base image** to use for building the image. In this case, we are using the official PostgreSQL image, which is based on the Debian Linux distribution.
-- The **working directory**, which is the directory where the application code will be copied to.
-- The **port** to expose. When we run the container, we will map this port to a port on the host machine. This makes the port accessible from outside the container.
-- The **command** to run when the container starts.
+### What each line does
 
-You could add environment variables to the Dockerfile, but it is better to use a **`.env`** file or the **`-e`** flag for this. We will see how to do this in the next section.
+| Line | Purpose |
+| --- | --- |
+| `FROM postgres:17` | Use PostgreSQL 17 as the base image |
+| `WORKDIR /app` | Set the working directory inside the container |
+| `EXPOSE 5432` | Document that PostgreSQL listens on port `5432` |
+| `CMD ["postgres"]` | Start PostgreSQL when the container runs |
+
+The important idea here is that we are not installing PostgreSQL from scratch ourselves. We are reusing a trusted base image and adding only the minimal configuration we need.
 
 ## Building the Docker Image
 
-To build the Docker image, we need to run the following command in the Terminal (make sure Docker Desktop is **open**):
+### What we are doing
+
+We are turning the `Dockerfile` into a Docker image that can later be used to start a container.
+
+### Command
+
+Run the following command from the project root. Make sure Docker Desktop is running first.
 
 ```bash
 docker build -t postgres_im .
 ```
 
-This command will build the Docker image using the Dockerfile in the current directory. The **`-t`** flag specifies the name of the image, and the **`.`** specifies the path to the Dockerfile.
+### What the command means
+
+- `docker build` tells Docker to build an image
+- `-t postgres_im` tags the image with the name `postgres_im`
+- `.` tells Docker to use the current folder as the build context
+
+### What to expect
+
+Docker reads the `Dockerfile`, downloads the base image if needed, and creates a local image named `postgres_im`.
 
 ## Running the Database Container
 
-A **Docker container** is defined as a **running instance of a Docker image**. To run the database container, we need to run the following command:
+### What we are doing
+
+Now we are starting a container from the image we just built. This container will run PostgreSQL in the background.
+
+### Command
 
 ```bash
 docker run -d --name postgres_cont \
     -e POSTGRES_USER=postgres \
     -e POSTGRES_PASSWORD=postgres \
     -e POSTGRES_DB=fastapi_db \
-    -v $(pwd)/postgres-db-volume:/var/lib/postgresql/data \
+    -v "$(pwd)/postgres-db-volume:/var/lib/postgresql/data" \
     -p 5432:5432 \
     postgres_im
 ```
 
-This command will run the container in detached mode, which means that the container will run in the background. The **`--name`** flag specifies the name of the container, and the **`-p`** flag specifies the port mapping. The first port number is the port on the host machine, and the second port number is the port on the container. In this case, we are mapping the port 5432 on the host machine to the port 5432 on the container. The **`-e`** flag specifies the environment variables. The **`POSTGRES_USER`** environment variable specifies the username for the database, the **`POSTGRES_PASSWORD`** environment variable specifies the password for the database, and the **`POSTGRES_DB`** environment variable specifies the name of the database. You could also specify these environment variables in a **`.env`** file, and then use the **`--env-file`** flag to specify the path to the **`.env`** file.
-The last argument is the name of the image. The **`-v`** flag is for mounting a volume. The first argument is the path to the volume on the host machine, and the second argument is the path to the volume on the container. In this case, we are mounting the **`postgres-db-volumne`** directory on the host machine to the **`/var/lib/postgresql/data`** directory on the container. This will allow us to persist the data in the database.
+### What the command means
 
-### Used flags as a table
-
-| Flag | Description |
+| Part | Meaning |
 | --- | --- |
-| `-d` | Run the container in detached mode |
-| `--name` | Specify the name of the container |
-| `-p` | Specify the port mapping |
-| `-e` | Specify the environment variables |
-| `-v` | Mount a volume |
-| `-t` | Specify the name of the image |
-| `--env-file` | Specify the path to the `.env` file |
+| `docker run` | Start a new container from an image |
+| `-d` | Run the container in detached mode, in the background |
+| `--name postgres_cont` | Name the container `postgres_cont` |
+| `-e POSTGRES_USER=postgres` | Set the database username |
+| `-e POSTGRES_PASSWORD=postgres` | Set the database password |
+| `-e POSTGRES_DB=fastapi_db` | Create `fastapi_db` on first startup |
+| `-v "$(pwd)/postgres-db-volume:/var/lib/postgresql/data"` | Persist database files in a local folder |
+| `-p 5432:5432` | Map host port `5432` to container port `5432` |
+| `postgres_im` | Use the image named `postgres_im` |
+
+### What to expect
+
+Docker starts the container and returns a long container ID. PostgreSQL then continues running in the background.
+
+Docker creates the `postgres-db-volume` folder automatically if it does not exist.
+
+### Why the environment variables matter
+
+The official PostgreSQL image reads these environment variables during its first startup:
+
+- `POSTGRES_USER` sets the main database user
+- `POSTGRES_PASSWORD` sets that user's password
+- `POSTGRES_DB` creates a database automatically
+
+That is why, in the default flow for this lesson, you do **not** need to create `fastapi_db` manually afterward.
+
+## Host vs Container: One Common Point of Confusion
+
+When you connect from your machine, you use `localhost` because the port is mapped to your host.
+
+When a command runs **inside** the container, it talks directly to PostgreSQL within the container environment.
+
+| Where the command runs | Host to use |
+| --- | --- |
+| On your machine with local `psql` | `localhost` |
+| Inside the container with `docker exec` | no `localhost` needed for this lesson |
+
+## Checking That the Container Is Ready
+
+### What we are doing
+
+Before connecting, we want to make sure PostgreSQL has finished starting.
+
+### Command
+
+```bash
+docker logs postgres_cont
+```
+
+### What to expect
+
+Look for a message similar to:
+
+```text
+database system is ready to accept connections
+```
+
+Once you see that, the database is ready to use.
 
 ## Connecting to the Database
 
-To connect to the database, we need to use a database client. We can use the **`psql`** command-line tool to connect to the database. To connect to the database, we need to run the following command:
+You can connect in one of two ways. Both connect to the same PostgreSQL server.
+
+### Option 1: Use `psql` on your machine
+
+#### What we are doing
+
+We are connecting from your local machine through the mapped port `5432`.
+
+#### Command
 
 ```bash
 psql -h localhost -p 5432 -U postgres -d fastapi_db
 ```
 
-This command will connect to the database using the **`psql`** tool. The **`-h`** flag specifies the host, the **`-p`** flag specifies the port, the **`-U`** flag specifies the username and the **`-d`** flag specifies the name of the database. The default **password** for the **`postgres`** user is **`postgres`**.
+#### What the command means
+
+- `-h localhost` connects to your machine
+- `-p 5432` uses PostgreSQL's port
+- `-U postgres` connects as user `postgres`
+- `-d fastapi_db` connects to the `fastapi_db` database
+
+#### What to expect
+
+You will be prompted for the password. Enter:
+
+```text
+postgres
+```
+
+### Option 2: Use `psql` inside the container
+
+#### What we are doing
+
+If `psql` is not installed on your machine, we can open the PostgreSQL client that already exists inside the container.
+
+#### Command
+
+```bash
+docker exec -it postgres_cont psql -U postgres -d fastapi_db
+```
+
+#### What the command means
+
+- `docker exec` runs a command inside a running container
+- `-it` opens an interactive terminal
+- `psql -U postgres -d fastapi_db` starts the PostgreSQL client
+
+#### What to expect
+
+You should land inside the `psql` prompt for the same database. This fallback is very handy when your host machine does not have PostgreSQL tools installed.
 
 ## Creating the Database
 
-We already defined a database named **`fastapi_db`** in the env variables in the Dockerfile. But we could also create the database using the following command:
+Because we started the container with `POSTGRES_DB=fastapi_db`, PostgreSQL already created the `fastapi_db` database for us on the first startup.
+
+So for this lesson, you do **not** need to run:
 
 ```sql
 CREATE DATABASE fastapi_db;
 ```
 
-This command will create a database named **`fastapi_db`**.
+If you start a PostgreSQL container later without `POSTGRES_DB`, then you can create a database manually after connecting to the default `postgres` database.
 
 ## Creating the Table
 
-To create the table, we need to run:
+### What we are doing
+
+We are creating a simple `users` table inside `fastapi_db`.
+
+### Command
 
 ```sql
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
     email VARCHAR(50) NOT NULL,
@@ -111,75 +267,109 @@ CREATE TABLE users (
 );
 ```
 
-This command will create a table named **`users`** with the following columns:
+### What the command means
 
-- `id`: The primary key for the table.
-- `name`: The name of the user.
-- `email`: The email address of the user.
-- `password`: The password of the user.
+- `id` is an automatically increasing primary key
+- `name`, `email`, and `password` are required text fields
+- `IF NOT EXISTS` makes the command safe to run again if you repeat the lesson
+
+### What to expect
+
+PostgreSQL creates the `users` table if it is not already there.
 
 ## Inserting Data
 
-To insert data into the table, we need to run the following command:
+### What we are doing
+
+We are adding one sample row to the table.
+
+### Command
 
 ```sql
-INSERT INTO users (name, email, password) VALUES ('John Doe', 'john.doe@example.com', 'password');
+INSERT INTO users (name, email, password)
+VALUES ('John Doe', 'john.doe@example.com', 'password');
 ```
 
-This command will insert a new row into the table with the following values:
+### What to expect
 
-- `name`: `John Doe`
-- `email`: `john.doe@example.com`
-- `password`: `password`
+The row is inserted into the `users` table. If you run the command multiple times, you will insert multiple rows.
 
 ## Querying Data
 
-To query data from the table, we need to run the following command:
+### What we are doing
+
+We are checking that the data was stored correctly.
+
+### Command
 
 ```sql
 SELECT * FROM users;
 ```
 
-This command will return all the rows from the table.
+### What to expect
 
-Now we created a database and a table, and we inserted some data into the table. We can now use this database in our FastAPI application.  
+You should see the row you inserted.
 
-But first, exit the client with **`\q`**.  
+When you are done, exit `psql` with:
+
+```text
+\q
+```
 
 ### Common `psql` commands
 
-| Command         | Description                                  |
-|-----------------|----------------------------------------------|
-| `\l`            | List all databases                           |
-| `\c <db_name>`  | Connect to a specific database               |
-| `\d`            | List all tables, views, and sequences        |
-| `\dt`           | List all tables                              |
-| `\?`            | List all `psql` commands                     |
-| `\h`            | Show SQL command help (e.g., `\h SELECT`)    |
-| `\q`            | Quit the `psql` client                       |
+| Command | Description |
+| --- | --- |
+| `\l` | List all databases |
+| `\c <db_name>` | Connect to a different database |
+| `\d` | List tables, views, and sequences |
+| `\dt` | List tables |
+| `\?` | Show `psql` commands |
+| `\h` | Show SQL help, for example `\h SELECT` |
+| `\q` | Quit `psql` |
 
-## Stopping the container
+## Stopping and Restarting the Container
 
-To stop the container, we can use the **`docker stop`** command:
+### Stop the container
 
 ```bash
-docker stop <container_id>
+docker stop postgres_cont
 ```
 
-This command will stop the container with the specified ID.
-
-To find the ID of the container, we can use the **`docker ps`** command:
+### See running containers
 
 ```bash
 docker ps
 ```
 
-This command will list all running containers.
-
-But for now we need the container to be running so we can continue with the next steps.
-
-If you stopped the container, you can start it again by:
+### Start the same container again later
 
 ```bash
-docker start <container_id>
+docker start postgres_cont
 ```
+
+Because we mounted a local folder as a volume, your database files stay on disk even after the container stops. That is why your data is still there after a restart.
+
+## Starting Fresh
+
+If you want to repeat the lesson from a completely clean state, stop and remove the container, then delete the local data directory:
+
+```bash
+docker rm -f postgres_cont
+rm -rf postgres-db-volume
+```
+
+This removes the running container and deletes the persisted database files from your machine, so the next run starts from scratch.
+
+## Summary
+
+In this lesson, you:
+
+- used a `Dockerfile` to define a PostgreSQL image
+- built that image with `docker build`
+- started a database container with `docker run`
+- connected to PostgreSQL with either local `psql` or `docker exec`
+- created a table, inserted data, and queried it
+- saw how a volume keeps data across container restarts
+
+We now have a PostgreSQL database running in Docker and can use it in the FastAPI application in the next lesson.

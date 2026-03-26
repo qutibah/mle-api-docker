@@ -27,10 +27,7 @@ def index():
 # get all user
 @app.get("/users", response_model=list[schemas.UserOut])
 def get_all_user(db: Session = Depends(get_db)):
-    user = db.query(models.User).all()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+    return db.query(models.User).all()
 
 
 # add user
