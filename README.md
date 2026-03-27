@@ -9,7 +9,7 @@ This repo contains a [notebook](01-intro-to-json.ipynb) explaining how to work w
 
 ## Mermaid Diagrams
 
-This repo contains Mermaid graphs in the Markdown lessons and notebook content. If you want them to render in VS Code:
+This repository contains Mermaid diagrams. If you want them to render in VS Code, we recommend installing the `Markdown Preview Mermaid Support` extension:
 
 - [Install in VS Code](vscode:extension/bierner.markdown-mermaid)
 - [View on Marketplace](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-mermaid)
