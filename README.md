@@ -1,11 +1,14 @@
 # Intro to APIs and Docker
 
-This repo contains a [notebook](01-intro-to-json.ipynb) explaining how to work with JSON data, followed by a few Markdown lessons that walk through building a simple FastAPI app and containerizing it with Docker.
+This repository contains a notebook explaining how to work with JSON data, followed by a few Markdown lessons that walk through building a simple FastAPI app and containerizing it with Docker.
 
-1. Small introduction to Docker and how to spin up a local database with it. [Intro to docker](02-intro-to-docker.md)
-2. Introduction to FastAPI and how to create a simple API. [Intro to FastAPI](03-intro-to-fastapi.md)
-3. Introduction to Docker and how to containerize your API. [Intro to Docker](04-intro-to-docker-part2.md)
-4. Introduction to Docker Compose and how to spin up your API and a local database with it. [Intro to Docker Compose](05-intro-to-docker-compose.md)
+## Learning Path
+
+- [01 - Intro to JSON](01-intro-to-json.ipynb): Introduction to JSON and how to read, modify, serialize, and validate JSON data.
+- [02 - Intro to Docker](02-intro-to-docker.md): Small introduction to Docker and how to spin up a local PostgreSQL database with it.
+- [03 - Intro to FastAPI](03-intro-to-fastapi.md): Introduction to FastAPI and how to create a simple REST API for your database.
+- [04 - Intro to Docker - Part 2](04-intro-to-docker-part2.md): Containerize your API and connect it to your database manually.
+- [05 - Intro to Docker Compose](05-intro-to-docker-compose.md): Introduction to Docker Compose and how to define a multi-container application automatically.
 
 ## Mermaid Diagrams
 
@@ -16,50 +19,49 @@ This repository contains Mermaid diagrams. If you want them to render in VS Code
 
 ## Environment
 
-You can find the requirements file in the **/service** directory. Use this file to create a new environment for this task.
+Please make sure you **use this repository as a template** and set up a new virtual environment. You can use the following commands:
 
 ### **`macOS`**
 
-```BASH
+```bash
 pyenv local 3.11.3
 python -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install -r service/requirements.txt
-pip install jupyter
+pip install -r requirements.txt
 ```
 
-#### **`Windows`**
+### **`Windows`**
 
-For `PowerShell` CLI :
+For `PowerShell` CLI:
 
 ```PowerShell
 pyenv local 3.11.3
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r service/requirements.txt
-pip install jupyter
+pip install -r requirements.txt
 ```
 
-For `Git-Bash` CLI :
+For `Git-Bash` CLI:
 
-```text
+```bash
 pyenv local 3.11.3
 python -m venv .venv
 source .venv/Scripts/activate
 pip install --upgrade pip
-pip install -r service/requirements.txt
-pip install jupyter
+pip install -r requirements.txt
 ```
 
-### Setup
+The [requirements.txt](requirements.txt) file contains all libraries and dependencies needed to execute the notebooks.
 
-- You need to install **Docker** for this task. Please **install the Desktop version** (for MacOS with M1/M2 chips there is no alternative). You can find the installation instructions [**here**](https://docs.docker.com/get-docker/).
+## Setup
+
+- You need to install `Docker` for this task. Please **install the Desktop version** (for MacOS with M1/M2 chips there is no alternative). You can find the installation instructions [**here**](https://docs.docker.com/get-docker/).
 
 - Installing `psql` is helpful if you want to connect to PostgreSQL from your machine, but the Docker lessons also include a `docker exec ... psql` fallback if you prefer not to install it locally.
 
-#### **`macOS`**
+### **`macOS`**
 
 ```sh
 brew install postgresql@17
@@ -78,13 +80,13 @@ brew install libpq
 brew link --force libpq
 ```
 
-#### **`Windows`**
+### **`Windows`**
 
 Please follow the [installation instructions](https://www.w3schools.com/postgresql/postgresql_install.php).
 
-### Diagram
+## Diagram
 
-When you are done with the exercise this is the structure you will have created.
+When you are done with the repository this is the structure you will have created:
 
 ```mermaid
 graph TD
@@ -126,3 +128,7 @@ graph TD
     S -- Manages & Runs --> DDB
     S -- Creates --> N
 ```
+
+## Learning Objectives
+
+By the end of this repository, you should be able to:
