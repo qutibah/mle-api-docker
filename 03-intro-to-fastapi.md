@@ -53,7 +53,7 @@ flowchart LR
 
 ## Before You Start
 
-This chapter assumes that the PostgreSQL database from [02-intro-to-docker.md](02-intro-to-docker.md) is already running and that the root `.env` file still points to:
+This chapter assumes that the PostgreSQL database from [02-intro-to-docker.md](02-intro-to-docker.md) is already running and that the root `.env` file points to:
 
 ```text
 DB_CONN='postgresql://postgres:postgres@localhost:5432/fastapi_db'
@@ -148,7 +148,7 @@ class User(Base):
 
 - `User` is a SQLAlchemy model
 - `__tablename__ = "users"` maps the class to the `users` table
-- each `Column(...)` describes one database column
+- Each `Column(...)` describes one database column
 
 SQLAlchemy lets us work with Python objects instead of writing raw SQL for every operation.
 
@@ -241,7 +241,7 @@ def index():
 
 
 @app.get("/users", response_model=list[schemas.UserOut])
-def get_all_user(db: Session = Depends(get_db)):
+def get_all_users(db: Session = Depends(get_db)):
     return db.query(models.User).all()
 
 
@@ -285,7 +285,7 @@ def delete(id: int, db: Session = Depends(get_db)):
 - `app = FastAPI()` creates the API application
 - `models.Base.metadata.create_all(bind=engine)` creates the tables if they do not exist yet
 - `get_db()` opens a session for the request and closes it afterward
-- each route function handles one API endpoint
+- Each route function handles one API endpoint
 
 ### FastAPI decorators at a glance
 
@@ -302,7 +302,7 @@ def delete(id: int, db: Session = Depends(get_db)):
 | --- | --- | --- | --- |
 | `GET` | `/` | Quick sanity endpoint | `{"data":"user list"}` |
 | `GET` | `/users` | Return all users | `[]` or a list of users |
-| `POST` | `/users` | Create a user | created user without password |
+| `POST` | `/users` | Create a user | Created user without showing password |
 | `PUT` | `/users/{id}` | Update one user | `"Updated successfully"` |
 | `DELETE` | `/users/{id}` | Delete one user | `"Deleted successfully"` |
 
@@ -368,6 +368,8 @@ Expected response:
 ```json
 []
 ```
+
+Notice that if you added a user to the database in the previous chapter and did not stop and remove the container before starting a new one, you will see this user listed here instead of an empty list. In that case, the user to be created in the next step will have `"id":2`.
 
 ### 3. Create a user
 
@@ -450,10 +452,10 @@ Expected response:
 
 This project is intentionally small, but the structure already follows patterns used in larger APIs:
 
-- models are separated from request and response schemas
-- database access is separated from route definitions
-- each request gets its own database session
-- FastAPI generates interactive documentation automatically
+- models are separated from request and response schemas,
+- database access is separated from route definitions,
+- each request gets its own database session,
+- FastAPI generates interactive documentation automatically.
 
 That makes the app easier to test, easier to extend, and easier to containerize in the next chapter.
 
@@ -461,11 +463,11 @@ That makes the app easier to test, easier to extend, and easier to containerize 
 
 In this lesson, you:
 
-- reviewed what APIs and REST endpoints are
-- built a FastAPI app connected to PostgreSQL
-- used SQLAlchemy models to represent database tables
-- used Pydantic schemas to validate and shape API data
-- ran the app locally with Uvicorn
-- tested the full CRUD flow with `curl`
+- reviewed what APIs and REST endpoints are,
+- built a FastAPI app connected to PostgreSQL,
+- used SQLAlchemy models to represent database tables,
+- used Pydantic schemas to validate and shape API data,
+- ran the app locally with Uvicorn,
+- tested the full CRUD flow with `curl`.
 
 In the next lesson, we will put this FastAPI app into a Docker container and connect it to the PostgreSQL container.

@@ -24,13 +24,13 @@ def index():
     return {"data": "user list"}
 
 
-# get all user
+# Get all users
 @app.get("/users", response_model=list[schemas.UserOut])
-def get_all_user(db: Session = Depends(get_db)):
+def get_all_users(db: Session = Depends(get_db)):
     return db.query(models.User).all()
 
 
-# add user
+# Add user
 @app.post("/users", response_model=schemas.UserOut)
 def create_user(request: schemas.UserModel, db: Session = Depends(get_db)):
     new_user = models.User(
@@ -42,7 +42,7 @@ def create_user(request: schemas.UserModel, db: Session = Depends(get_db)):
     return new_user
 
 
-# update user
+# Update user
 @app.put("/users/{id}")
 def update_user(id: int, request: schemas.UserUpdate, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == id)
@@ -57,7 +57,7 @@ def update_user(id: int, request: schemas.UserUpdate, db: Session = Depends(get_
     return "Updated successfully"
 
 
-# delete user
+# Delete user
 @app.delete("/users/{id}")
 def delete(id: int, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == id)

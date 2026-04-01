@@ -15,7 +15,7 @@ With Compose, we no longer need to:
 - run the app container separately
 - remember the exact `docker run` flags for each service
 
-Instead, we describe the whole application once in `docker-compose.yml`.
+Instead, we describe the whole application once in `docker-compose.yaml`.
 
 ## What We Are Building
 
@@ -37,7 +37,7 @@ flowchart LR
 
 ## The Compose File
 
-The file **`docker-compose.yml`** now contains:
+The file **`docker-compose.yaml`** contains:
 
 ```yaml
 services:
@@ -126,7 +126,7 @@ postgresql://postgres:postgres@db:5432/fastapi_db
 
 Here, `db` is the Compose service name, and Docker Compose automatically makes that name available on the shared network.
 
-The root `.env` file can stay unchanged for host-based local runs. Compose overrides only the app container’s connection string in `docker-compose.yml`.
+The root `.env` file can stay unchanged for host-based local runs. Compose overrides only the app container’s connection string in `docker-compose.yaml`.
 
 ## Why the Volume Path Matters
 
@@ -225,11 +225,7 @@ Expected response on a fresh database:
 
 ### Swagger UI
 
-Open:
-
-```text
-http://localhost:8000/docs
-```
+Open: http://localhost:8000/docs
 
 If that page loads, the Compose-managed app is reachable from your browser and the API is connected to the database correctly.
 
@@ -239,10 +235,10 @@ Compare this chapter with the manual setup from chapter 4:
 
 | Manual Docker | Docker Compose |
 | --- | --- |
-| build images separately | build is defined in YAML |
-| create network manually | network is created automatically |
-| run containers with long commands | one `docker compose up -d` command |
-| pass app DB host manually | service name `db` is already known on the network |
+| Build images separately | Build is defined in YAML |
+| Create network manually | Network is created automatically |
+| Run containers with long commands | One `docker compose up -d` command |
+| Pass app DB host manually | Service name `db` is already known on the network |
 
 That is the main value of Compose: it turns a collection of related container commands into one application definition.
 
@@ -281,10 +277,10 @@ If you also want to remove the persisted database volume directory content on yo
 
 In this chapter, you:
 
-- used `docker-compose.yml` to define the database and API services
-- let Compose build the app image automatically
-- let Compose create the shared network automatically
-- connected the app to the database using the service hostname `db`
-- started the whole application with `docker compose up -d`
+- used `docker-compose.yaml` to define the database and API services,
+- let Compose build the app image automatically,
+- let Compose create the shared network automatically,
+- connected the app to the database using the service hostname `db`,
+- started the whole application with `docker compose up -d`.
 
 At this point, you have the same two-container application from chapter 4, but managed in a much simpler and more repeatable way.

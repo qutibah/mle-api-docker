@@ -55,6 +55,7 @@ flowchart LR
 This repository already contains a `Dockerfile` in the project root:
 
 ```Dockerfile
+# Set the base image
 FROM postgres:17
 
 # Set the working directory
@@ -161,7 +162,7 @@ When a command runs **inside** the container, it talks directly to PostgreSQL wi
 | Where the command runs | Host to use |
 | --- | --- |
 | On your machine with local `psql` | `localhost` |
-| Inside the container with `docker exec` | no `localhost` needed for this lesson |
+| Inside the container with `docker exec` | No `localhost` needed |
 
 ## Checking That the Container Is Ready
 
@@ -177,11 +178,7 @@ docker logs postgres_cont
 
 ### What to expect
 
-Look for a message similar to:
-
-```text
-database system is ready to accept connections
-```
+Look for a message similar to: `database system is ready to accept connections`
 
 Once you see that, the database is ready to use.
 
@@ -210,11 +207,8 @@ psql -h localhost -p 5432 -U postgres -d fastapi_db
 
 #### What to expect
 
-You will be prompted for the password. Enter:
+You will be prompted for the password. Enter: `postgres`
 
-```text
-postgres
-```
 
 ### Option 2: Use `psql` inside the container
 
@@ -242,13 +236,14 @@ You should land inside the `psql` prompt for the same database. This fallback is
 
 Because we started the container with `POSTGRES_DB=fastapi_db`, PostgreSQL already created the `fastapi_db` database for us on the first startup.
 
-So for this lesson, you do **not** need to run:
+If you start a PostgreSQL container **without** `POSTGRES_DB`, you would first connect to the default `postgres` database and then create your own database manually:
 
 ```sql
 CREATE DATABASE fastapi_db;
 ```
 
-If you start a PostgreSQL container later without `POSTGRES_DB`, then you can create a database manually after connecting to the default `postgres` database.
+For this lesson, you do **not** need to run the command above.
+
 
 ## Creating the Table
 
@@ -308,7 +303,7 @@ SELECT * FROM users;
 
 ### What to expect
 
-You should see the row you inserted.
+You should see the row you just inserted.
 
 When you are done, exit `psql` with:
 
@@ -321,7 +316,7 @@ When you are done, exit `psql` with:
 | Command | Description |
 | --- | --- |
 | `\l` | List all databases |
-| `\c <db_name>` | Connect to a different database |
+| `\c <db_name>` | Connect to a specific database |
 | `\d` | List tables, views, and sequences |
 | `\dt` | List tables |
 | `\?` | Show `psql` commands |
@@ -365,11 +360,11 @@ This removes the running container and deletes the persisted database files from
 
 In this lesson, you:
 
-- used a `Dockerfile` to define a PostgreSQL image
-- built that image with `docker build`
-- started a database container with `docker run`
-- connected to PostgreSQL with either local `psql` or `docker exec`
-- created a table, inserted data, and queried it
-- saw how a volume keeps data across container restarts
+- used a `Dockerfile` to define a PostgreSQL image,
+- built that image with `docker build`,
+- started a database container with `docker run`,
+- connected to PostgreSQL with either local `psql` or `docker exec`,
+- created a table, inserted data, and queried it,
+- saw how a volume keeps data across container restarts.
 
 We now have a PostgreSQL database running in Docker and can use it in the FastAPI application in the next lesson.

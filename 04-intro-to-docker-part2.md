@@ -1,12 +1,12 @@
 # FastAPI and Docker
 
-In the previous chapter, we ran PostgreSQL in Docker. In the FastAPI chapter, we ran the API directly on the host machine. In this chapter, we will containerize the FastAPI app too, so both parts of the application can run in Docker.
+In chapter 2 we ran PostgreSQL in Docker. In chapter 3, we ran the API directly on the host machine. In this chapter, we will containerize the FastAPI app too, so both parts of the application can run in Docker.
 
 This chapter focuses on the **manual** multi-container workflow. That means we will build the app image ourselves, create a Docker network ourselves, and start both containers with `docker run`. This is a useful learning step because it shows clearly how the pieces connect before Docker Compose automates the setup in the next lesson.
 
 ## What We Are Building
 
-We now have two containers:
+We will now have two containers:
 
 - a **PostgreSQL container** for the database
 - a **FastAPI container** for the API
@@ -45,13 +45,14 @@ This chapter assumes:
 - the FastAPI app from chapter 3 is working
 - Docker Desktop is running
 
-Unlike the previous chapter, you do **not** need to change the repo `.env` file here. We will keep the local host-based `.env` for local FastAPI runs and pass the container-specific database connection only at runtime with `-e DB_CONN=...`.
+You will **not** need to change the root `.env` here. We will keep the local host-based `.env` for local FastAPI runs and pass the container-specific database connection only at runtime with `-e DB_CONN=...`.
 
 ## Creating the App Dockerfile
 
 The FastAPI app now has its own Dockerfile in **`service/Dockerfile`**:
 
 ```Dockerfile
+# Set the base image
 FROM python:3.11.3-slim-buster
 
 # Set the working directory
@@ -127,8 +128,8 @@ So:
 
 | Network type | How containers usually find each other |
 | --- | --- |
-| Default bridge | mostly by IP address |
-| User-defined bridge | by container name as hostname |
+| Default bridge | Mostly by IP address |
+| User-defined bridge | By container name as hostname |
 
 That second behavior is exactly what we want here, because it lets us use `postgres_cont` in the database connection string.
 
@@ -175,6 +176,12 @@ docker run -d --name postgres_cont \
     -e POSTGRES_PASSWORD=postgres \
     -e POSTGRES_DB=fastapi_db \
     postgres_im
+```
+
+If this command fails, you most likely already have a container with the same name running. In that case, stop and remove the existing container with the command below, then start it again with the command above.
+
+```bash
+docker rm -f postgres_cont
 ```
 
 ### What the command means
@@ -226,11 +233,7 @@ docker run -d --name fastapi_cont \
 
 In chapter 3, the app ran on the host machine, so `localhost` in `.env` was correct.
 
-In this chapter, the app runs inside a container. That means it must connect to the database container by container name:
-
-```text
-postgres_cont
-```
+In this chapter, the app runs inside a container. That means it must connect to the database container by container name: `postgres_cont`
 
 So the connection string becomes:
 
@@ -238,15 +241,11 @@ So the connection string becomes:
 postgresql://postgres:postgres@postgres_cont:5432/fastapi_db
 ```
 
-We pass that value directly with `-e DB_CONN=...` so the repo `.env` can stay unchanged for local runs.
+We pass that value directly with `-e DB_CONN=...` so the root `.env` can stay unchanged for local runs.
 
 ### What to expect
 
-The FastAPI app starts in the background and becomes available on:
-
-```text
-http://localhost:8000
-```
+The FastAPI app starts in the background and becomes available on: http://localhost:8000
 
 To confirm the container started correctly, run:
 
@@ -284,11 +283,7 @@ Expected response on a fresh database:
 
 ### Interactive docs
 
-Open:
-
-```text
-http://localhost:8000/docs
-```
+Open: http://localhost:8000/docs
 
 If that page loads, the app container is reachable from your browser and the app is talking to the database successfully.
 
@@ -326,10 +321,10 @@ docker network rm fastapi_net
 
 This manual workflow is helpful because it makes the hidden pieces visible:
 
-- images must be built separately
-- containers must be started separately
-- environment variables may change depending on where the app runs
-- containers need a shared network to talk to each other by name
+- images must be built separately,
+- containers must be started separately,
+- environment variables may change depending on where the app runs,
+- containers need a shared network to talk to each other by name.
 
 Once that mental model is clear, Docker Compose becomes much easier to understand.
 
@@ -337,10 +332,10 @@ Once that mental model is clear, Docker Compose becomes much easier to understan
 
 In this chapter, you:
 
-- built a Docker image for the FastAPI app
-- created a user-defined bridge network
-- ran PostgreSQL and FastAPI in separate containers
-- connected the app container to the database container by hostname
-- verified that the API works on `localhost:8000`
+- built a Docker image for the FastAPI app,
+- created a user-defined bridge network,
+- ran PostgreSQL and FastAPI in separate containers,
+- connected the app container to the database container by hostname,
+- verified that the API works on `localhost:8000`.
 
 In the next lesson, we will use Docker Compose to automate this whole multi-container setup with a single configuration file.
