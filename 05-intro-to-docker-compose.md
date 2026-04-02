@@ -225,7 +225,7 @@ Expected response on a fresh database:
 
 ### Swagger UI
 
-Open: http://localhost:8000/docs
+Open: <http://localhost:8000/docs>
 
 If that page loads, the Compose-managed app is reachable from your browser and the API is connected to the database correctly.
 

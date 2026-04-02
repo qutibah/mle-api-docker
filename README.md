@@ -10,6 +10,18 @@ This repository contains a notebook explaining how to work with JSON data, follo
 - [04 - Intro to Docker - Part 2](04-intro-to-docker-part2.md): Containerize your API and connect it to your database manually.
 - [05 - Intro to Docker Compose](05-intro-to-docker-compose.md): Introduction to Docker Compose and how to define a multi-container application automatically.
 
+## Learning Objectives
+
+By the end of these exercises, you should be able to:
+
+- explain the difference between JSON text and Python objects
+- read, write, and validate JSON data in Python
+- run PostgreSQL in Docker and connect to it from your machine or from inside a container
+- build a small CRUD API with FastAPI, Pydantic, and SQLAlchemy
+- containerize the FastAPI app with Docker
+- connect multiple containers over a shared Docker network
+- run the API and database together with Docker Compose
+
 ## Mermaid Diagrams
 
 This repository contains Mermaid diagrams. If you want them to render in VS Code, we recommend installing the `Markdown Preview Mermaid Support` extension:

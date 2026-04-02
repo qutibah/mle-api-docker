@@ -245,7 +245,7 @@ We pass that value directly with `-e DB_CONN=...` so the root `.env` can stay un
 
 ### What to expect
 
-The FastAPI app starts in the background and becomes available on: http://localhost:8000
+The FastAPI app starts in the background and becomes available on: <http://localhost:8000>
 
 To confirm the container started correctly, run:
 
@@ -283,7 +283,7 @@ Expected response on a fresh database:
 
 ### Interactive docs
 
-Open: http://localhost:8000/docs
+Open: <http://localhost:8000/docs>
 
 If that page loads, the app container is reachable from your browser and the app is talking to the database successfully.
 

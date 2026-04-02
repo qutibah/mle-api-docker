@@ -209,7 +209,6 @@ psql -h localhost -p 5432 -U postgres -d fastapi_db
 
 You will be prompted for the password. Enter: `postgres`
 
-
 ### Option 2: Use `psql` inside the container
 
 #### What we are doing
@@ -243,7 +242,6 @@ CREATE DATABASE fastapi_db;
 ```
 
 For this lesson, you do **not** need to run the command above.
-
 
 ## Creating the Table
 
