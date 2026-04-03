@@ -130,3 +130,9 @@ dmypy.json
 
 # postgres volume
 postgres-db-volume/
+
+# MacOS DS_Store
+.DS_Store
+
+# Generated files during development
+data/*.json

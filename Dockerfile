@@ -1,3 +1,4 @@
+# Set the base image
 FROM postgres:17
 
 # Set the working directory
@@ -7,4 +8,4 @@ WORKDIR /app
 EXPOSE 5432
 
 # Run the application
-CMD ["postgres"] 
+CMD ["postgres"]

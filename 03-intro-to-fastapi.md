@@ -1,48 +1,107 @@
 # Application Programming Interfaces (APIs)
 
-**APIs are a set of protocols and tools that allow different software applications to communicate with each other.** They have become an essential part of modern software development, enabling developers to build complex systems that integrate with other applications seamlessly.
+**An API is a way for software systems to communicate with each other.** In a web API, one application sends an HTTP request and another application sends back a response, often in JSON format.
 
-A **REST API (Representational State Transfer API)** is a way for these systems to communicate over the web using standard **HTTP methods** like **`GET`**, **`POST`**, **`PUT`**, and **`DELETE`**. In a REST API, data is organized into resources, each accessible through a **unique URL**.  
+In this chapter, we will build a small **REST API** with **FastAPI**. REST is a common style for web APIs where data is exposed through URLs and standard HTTP methods such as:
 
-**FastAPI is a Python-based web framework** that has gained popularity among developers for its speed, simplicity, and easy-to-use API building capabilities. It leverages the latest Python features and best practices to provide a fast, scalable, and reliable API framework.
+- `GET` to read data
+- `POST` to create data
+- `PUT` to update data
+- `DELETE` to remove data
 
-FastAPI is built on top of the powerful ASGI server, which allows for high-performance asynchronous code execution. It provides automatic documentation, type checking, and validation, making it easy to create well-documented and robust APIs. FastAPI also includes built-in support for popular data formats like JSON, YAML, and CSV, and integrates seamlessly with popular databases like PostgreSQL and MongoDB.
+FastAPI is a modern Python framework for building APIs. It is popular because it is:
 
-In summary, FastAPI is a modern and powerful Python-based framework that provides a fast, scalable, and easy-to-use solution for building APIs. Its popularity among developers is rapidly increasing due to its speed, simplicity, and the comprehensive features it provides out of the box.
+- easy to read and write
+- fast in development and at runtime
+- strongly typed
+- able to generate interactive API documentation automatically
 
-### Building a FastAPI Application
+In this repository, FastAPI is the application layer that sits in front of the PostgreSQL database we created in the previous Docker lesson. FastAPI receives requests, validates input data, talks to the database through SQLAlchemy, and returns JSON responses.
 
-In this section, we will build a simple FastAPI application that will allow us to explore the features and capabilities of the framework. 
+## What We Are Building
 
-We will use the FastAPI framework to build a simple API in Python. It will allow us to perform basic **CRUD operations** (Create, Update, Read, and Delete: fundamental actions that can be performed on data stored in databases) on a database of users. 
+We will build a small CRUD API for users. CRUD stands for:
 
-In this example we will use the **Postgres database**, but you can use any database that is supported by FastAPI. We will also use the **SQLAlchemy ORM** to interact with the database. 
+- **Create**
+- **Read**
+- **Update**
+- **Delete**
 
-You can find the [code](./service/main.py) for this example in the **/service** folder.
+Our application has four main building blocks:
 
-#### Creating the Database
-We created the database in the [Docker Intro](02-intro-to-docker.md) section.
+| File | Responsibility |
+| --- | --- |
+| `database.py` | Connect to PostgreSQL and create SQLAlchemy session helpers |
+| `models.py` | Define SQLAlchemy table models |
+| `schemas.py` | Define Pydantic models for request and response data |
+| `main.py` | Create the FastAPI app and define the API routes |
 
-#### Modular App Structure
-When writing an app, it is best to create independent and modular python code. Here we will discuss the following constituent files of our app: **database.py**, **models.py**, **schemas.py**, **main.py** and **load.py**.
+At a high level, the flow looks like this:
 
-Ideally, you should only have to define your database models once! Using SQLAlchemy’s **`declarative_base()`** and **`Base.metadata.create_all()`** allows you to write just one class per table to use in the app, to use in Python outside of the app and to use in the database. With a separate **`database.py`** and **`models.py`** file, we establish our database table classes and connection a single time, then call them later as needed.
+```mermaid
+flowchart LR
+    Client["Browser / curl / Swagger UI"] --> API["FastAPI App"]
+    API --> Schemas["Pydantic Schemas"]
+    API --> Session["SQLAlchemy Session"]
+    Session --> Models["SQLAlchemy Models"]
+    Models --> DB["PostgreSQL Database"]
+    DB --> Models
+    Models --> API
+    Schemas --> API
+    API --> Client
+```
 
-To avoid confusion between the SQLAlchemy models and the Pydantic models, we will call the file **`models.py`** with the SQLAlchemy models, and the file **`schemas.py`** with the Pydantic models. Also of note is that SQLAlchemy and Pydantic use slightly different syntax to define models, as seen in the below files.
+## Before You Start
 
-#### Creating the Database Connection
+This chapter assumes that the PostgreSQL database from [02-intro-to-docker.md](02-intro-to-docker.md) is already running and that the root `.env` file points to:
 
-The **`database.py`** file contains the code to create the database connection. We will use the **SQLAlchemy ORM** to interact with the database. SQLAlchemy is a Python library that provides a simple and powerful abstraction layer for interacting with databases. It allows us to write SQL queries using Python syntax, which makes it easy to build complex queries and perform database operations.
+```text
+DB_CONN='postgresql://postgres:postgres@localhost:5432/fastapi_db'
+```
+
+That `localhost` host is correct for this chapter because we are running FastAPI directly on your machine, not inside a Docker container yet.
+
+## How the Pieces Fit Together
+
+The app uses three main libraries together:
+
+| Tool | What it does here |
+| --- | --- |
+| **FastAPI** | Defines routes and returns HTTP responses |
+| **Pydantic** | Validates request bodies and shapes response data |
+| **SQLAlchemy** | Talks to PostgreSQL using Python objects |
+
+That separation is useful:
+
+- FastAPI handles the web layer
+- Pydantic handles data validation and serialization
+- SQLAlchemy handles database access
+
+This keeps the code easier to understand and easier to extend later.
+
+## Creating the Database Connection
+
+### What we are doing
+
+We are creating the reusable database connection setup for the app.
+
+### Code
+
+The file **`service/database.py`** contains:
 
 ```python
 import os
+
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
 
 SQLALCHEMY_DATABASE_URI = os.getenv("DB_CONN")
+
+if SQLALCHEMY_DATABASE_URI is None:
+    raise ValueError("DB_CONN environment variable is required")
 
 engine = create_engine(SQLALCHEMY_DATABASE_URI)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -50,36 +109,32 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 ```
 
-**SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)** is enabling us to interact with the database. The **`autocommit`** and **`autoflush`** are set to **`False`**, which means that SQLAlchemy will not automatically commit changes to the database or automatically refresh objects from the database. The bind parameter is set to the engine we created earlier.
+### What this does
 
-##### Declarative Base and MetaData
-The **`declarative_base()`** base class contains a **`MetaData`** object where newly defined Table objects are collected. This MetaData object is accessed when we call the line **`models.Base.metadata.create_all()`** to create all of our tables.
+- `load_dotenv()` loads values from the `.env` file
+- `os.getenv("DB_CONN")` reads the database connection string
+- `create_engine(...)` creates the SQLAlchemy database engine
+- `sessionmaker(...)` creates a factory for database sessions
+- `declarative_base()` creates the base class for our SQLAlchemy models
 
-##### os.getenv()
-The **`os.getenv()`** function returns the value of the environment variable with the specified name. To not expose our database credentials, we will use environment variables to store the database URI. We will use the **`python-dotenv`** library to load the environment variables from a **`.env`** file. In the **`.env`** file, we will store the database URI as **`DB_CONN`**. In a Docker container, we can pass the environment variables to the container using the **`-e`** flag.
+### Why `SessionLocal` matters
 
-#### Session Local: Handling Threading Issues
-SQLAlchemy includes a helper object that helps with the establishment of user-defined Session scopes. This is useful for eliminating threading issues across your app.
+Each request should get its own database session. That session is opened when needed and then closed when the request finishes. This helps keep database access organized and avoids leaving connections open longer than necessary.
 
-To create a session, below we use the **`sessionmaker`** function and pass it a few arguments. Sessionmaker is a factory for initializing new Session objects. Sessionmaker initializes these sessions by requesting a connection from the engine's connection pool and attaching a connection to the new Session object.
+## Creating the Database Model
 
-```python
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-```
+### What we are doing
 
-Initializing a new session object is also referred to as **"checking out"** a connection. The database stores a list of these connections/processes. So when you begin a new session, be mindful you are also starting a new process within the database. If the database doesn’t have these connections closed, there is a maximum number of connections that can be reached. The database will eventually kill idle processes like stale connections; however, it can take hours before that happens.
+We are defining the Python class that maps to the `users` table in PostgreSQL.
 
-SQLAlchemy has some pool options to prevent this, but **removing the connections when they are no longer needed is best!** The FastAPI docs include a **`get_db()`** function that allows a route to use the same session through a request and then close it when the request is finished. Then **`get_db()`** creates a new session for the next request.
+### Code
 
-Once we have our database connection and session set up, we are ready to build our other app components.
-
-#### Creating the Database Models
-
-The **`models.py`** file contains the code to create the database models. As before, we will use the SQLAlchemy ORM to interact with the database. 
+The file **`service/models.py`** contains:
 
 ```python
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import Column, Integer, String
 from database import Base
+
 
 class User(Base):
     __tablename__ = "users"
@@ -89,55 +144,75 @@ class User(Base):
     password = Column(String)
 ```
 
-This file creates the model or schema for the table **`users`** in our database.
+### What this does
 
-Using SQLAlchemy’s **`declarative_base()`** allows you to write just one model for each table that the app uses. That model is then used in Python outside of the app and in the database.
+- `User` is a SQLAlchemy model
+- `__tablename__ = "users"` maps the class to the `users` table
+- Each `Column(...)` describes one database column
 
-Having these separate Python files is good because you can use the same model to query or load data outside of an app. Additionally, you’ll have one version of each model, which simplifies development.
+SQLAlchemy lets us work with Python objects instead of writing raw SQL for every operation.
 
-These modular Python files can be used to reference the same models or databases in data pipelines, report generation, and anywhere else they are needed.
+## Creating the Pydantic Schemas
 
+### What we are doing
 
-#### Creating the Pydantic Models
+We are defining the request and response shapes for the API.
 
-The **`schemas.py`** file contains the code to create the Pydantic models. Pydantic is a Python library that allows us to define data models using Python type annotations. It provides data validation, serialization, and deserialization out of the box, making it easy to build robust APIs.
+### Code
+
+The file **`service/schemas.py`** contains:
 
 ```python
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+
 
 class UserModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     name: str
     email: str
     password: str
 
-    class Config:
-        orm_mode = True
-        
+
 class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     email: str
-    
-    class Config:
-        orm_mode = True
+
 
 class UserUpdate(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     name: str
     email: str
     password: str
-    
-    class Config:
-        orm_mode = True
 ```
 
-The line **`orm_mode = True`** allows the app to take ORM objects and translate them into responses automatically. This automation saves us from manually taking data out of ORM, making it into a dictionary, then loading it in with Pydantic.
-**ORM means Object Relational Mapping.** It is a technique that lets you query and manipulate data from a database using an object-oriented paradigm. It is a programming technique for converting data between incompatible type systems using object-oriented programming languages. This creates, in effect, a **"virtual object database"** that can be used from within the programming language.
+### What this does
 
-#### Creating the Main App File
+- `UserModel` describes the body for creating a user
+- `UserOut` describes what we send back to clients
+- `UserUpdate` describes the body for updating a user
 
-The **`main.py`** file contains the code to create the FastAPI app. Here is where we bring all the modular components together.
+### Why `from_attributes=True` matters
 
-After importing all of our dependencies and modular app components we call **`models.Base.metadata.create_all(bind=engine)`** to create our models in the database.
+FastAPI often returns SQLAlchemy objects directly. In Pydantic v2, `ConfigDict(from_attributes=True)` tells Pydantic that it is allowed to build response data from object attributes, not only from plain dictionaries.
+
+That is why the API can return a SQLAlchemy `User` object and still produce valid JSON automatically.
+
+Also notice that `UserOut` does **not** include a `password` field. This means the password is stored in the database, but it is not exposed in API responses.
+
+## Creating the FastAPI App
+
+### What we are doing
+
+We are combining the database layer, schemas, and routes into one FastAPI application.
+
+### Code
+
+The file **`service/main.py`** contains:
 
 ```python
 from fastapi import Depends, FastAPI, HTTPException
@@ -152,7 +227,6 @@ app = FastAPI()
 models.Base.metadata.create_all(bind=engine)
 
 
-# Dependency
 def get_db():
     try:
         db = SessionLocal()
@@ -160,38 +234,42 @@ def get_db():
     finally:
         db.close()
 
+
 @app.get("/")
 def index():
     return {"data": "user list"}
 
-# get all user
-@app.get("/users", response_model=list[schemas.UserOut])
-def get_all_user(db: Session = Depends(get_db)):
-    user = db.query(models.User).all()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
 
-# add user
+@app.get("/users", response_model=list[schemas.UserOut])
+def get_all_users(db: Session = Depends(get_db)):
+    return db.query(models.User).all()
+
+
 @app.post("/users", response_model=schemas.UserOut)
 def create_user(request: schemas.UserModel, db: Session = Depends(get_db)):
-    new_user = models.User(name=request.name, email=request.email, password=request.password)
+    new_user = models.User(
+        name=request.name, email=request.email, password=request.password
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
 
-# update user
+
 @app.put("/users/{id}")
 def update_user(id: int, request: schemas.UserUpdate, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == id)
-    if not user.first():
+    existing_user = user.first()
+    if existing_user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    user.update(request.dict())
+
+    for field, value in request.model_dump().items():
+        setattr(existing_user, field, value)
+
     db.commit()
     return "Updated successfully"
 
-# delete user
+
 @app.delete("/users/{id}")
 def delete(id: int, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == id)
@@ -202,76 +280,194 @@ def delete(id: int, db: Session = Depends(get_db)):
     return "Deleted successfully"
 ```
 
-The **`get_db()`** function ensures that any route passed this function ought to have our SessionLocal database connection when needed and that the session is closed after use.
+### What this does
 
-The **`@app.get()`** decorator is used to define a route, in this case the route is "/users". The **`@app.post()`** decorator is used to define a route that accepts **POST** requests (a HTTP method used to send data to a server). The **`@app.put()`** decorator is used to define a route that accepts **PUT** requests. The **`@app.delete()`** decorator is used to define a route that accepts **DELETE** requests.
+- `app = FastAPI()` creates the API application
+- `models.Base.metadata.create_all(bind=engine)` creates the tables if they do not exist yet
+- `get_db()` opens a session for the request and closes it afterward
+- Each route function handles one API endpoint
 
-#### Table of FastAPI Decorators
+### FastAPI decorators at a glance
 
-| Decorator | HTTP Method | Description |
+| Decorator | HTTP Method | Purpose |
 | --- | --- | --- |
-| `@app.get()` | GET | Retrieve data |
+| `@app.get()` | GET | Read data |
 | `@app.post()` | POST | Create data |
 | `@app.put()` | PUT | Update data |
 | `@app.delete()` | DELETE | Delete data |
 
+### Endpoint summary
 
-
-The **`response_model`** parameter is used to define the response model for the route. The **`Depends()`** function is used to define dependencies for the route. The **`db: Session = Depends(get_db)`** parameter is used to define the database session for the route.
+| Method | Path | Purpose | Typical response |
+| --- | --- | --- | --- |
+| `GET` | `/` | Quick sanity endpoint | `{"data":"user list"}` |
+| `GET` | `/users` | Return all users | `[]` or a list of users |
+| `POST` | `/users` | Create a user | Created user without showing password |
+| `PUT` | `/users/{id}` | Update one user | `"Updated successfully"` |
+| `DELETE` | `/users/{id}` | Delete one user | `"Deleted successfully"` |
 
 ## Running the App
 
-To run the app we can use the **`uvicorn`** command. First you need to move to the **/service** directory (**`cd service`**) and then run the following command (it will run the app on port 8000):
+### What we are doing
+
+We are starting the FastAPI development server locally.
+
+### Command
+
+Move into the `service` folder first:
 
 ```bash
+cd service
 uvicorn main:app --reload --port 8000
 ```
 
-If your port is already in use you can use the **`--port`** parameter to specify a different port.
-Now that the app is running we can access the docs in the browser at **`http://localhost:8000/docs`**.
+### What the command means
+
+- `uvicorn` starts the ASGI server
+- `main:app` means "use the `app` object from `main.py`"
+- `--reload` restarts the server automatically when code changes
+- `--port 8000` serves the app on port `8000`
+
+### What to expect
+
+Once the app starts, open:
+
+- [http://localhost:8000/docs](http://localhost:8000/docs) for Swagger UI
+- [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json) for the OpenAPI schema
+
+If port `8000` is already in use, choose another port with `--port`.
 
 ## Testing the App
-To test the app we can use the docs which you can access in the browser, or we can use the **`curl`** command to send a request to the API. Open a **new Terminal** and type the following command, which will send a **GET** request to the **`/users`** endpoint:
+
+You can test the API from the interactive docs, but it is also useful to send requests from the terminal with `curl`.
+
+Open a **new terminal** so the Uvicorn server can keep running in the first one.
+
+### 1. Check the root endpoint
 
 ```bash
-curl http://localhost:8000/users
+curl http://localhost:8000/
 ```
 
-The response indicates that there is one user in the database. We can add a user by sending a **POST** request to the **`/users`** endpoint:
-
-```bash
-curl -X POST http://localhost:8000/users -H "Content-Type: application/json" -d '{"name": "Jane Doe", "email": "jane.doe@example.com", "password": "password1234"}'
-``` 
-
-This command will return the following response:
+Expected response:
 
 ```json
-{
-    "id": 2,
-    "name": "Jane Doe",
-    "email": "jane.doe@example.com"
-}
+{"data":"user list"}
 ```
 
-This response indicates that the user was successfully added to the database. Note that the **password** is not shown, since it's not specified in the **`UserOut`** class ([schemas.py](service/schemas.py)) for security reasons.
+### 2. Check the empty user list
 
-We can now send a **GET** request to the **`/users`** endpoint to retrieve the user:
+On a fresh database, this endpoint should return an empty list:
 
 ```bash
 curl http://localhost:8000/users
 ```
 
-This command will return all users.
+Expected response:
 
-## Conclusion
-
-In this tutorial we learned how to create a REST API using **FastAPI**. We created a simple CRUD API that allows us to create, read, update, and delete users from a database. We also learned how to use **SQLAlchemy** to interact with the database and how to use **Pydantic** to validate and serialize data. Of course **such an API can also be used as an endpoint for Machine Learning models**. It would look something like this:
-
-```python
-@app.post("/predict", response_model=schemas.Prediction)
-def predict(request: schemas.PredictionRequest, db: Session = Depends(get_db)):
-    # get data from request
-    # preprocess data
-    # make prediction
-    # return prediction
+```json
+[]
 ```
+
+Notice that if you added a user to the database in the previous chapter and did not stop and remove the container before starting a new one, you will see this user listed here instead of an empty list. In that case, the user to be created in the next step will have `"id":2`.
+
+### 3. Create a user
+
+```bash
+curl -X POST http://localhost:8000/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Jane Doe","email":"jane.doe@example.com","password":"password1234"}'
+```
+
+Expected response:
+
+```json
+{"id":1,"name":"Jane Doe","email":"jane.doe@example.com"}
+```
+
+Notice that the password is not returned. That happens because the route uses `response_model=schemas.UserOut`.
+
+### 4. List users again
+
+```bash
+curl http://localhost:8000/users
+```
+
+Expected response:
+
+```json
+[{"id":1,"name":"Jane Doe","email":"jane.doe@example.com"}]
+```
+
+### 5. Update the user
+
+```bash
+curl -X PUT http://localhost:8000/users/1 \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Jane Smith","email":"jane.smith@example.com","password":"newpass"}'
+```
+
+Expected response:
+
+```json
+"Updated successfully"
+```
+
+### 6. Delete the user
+
+```bash
+curl -X DELETE http://localhost:8000/users/1
+```
+
+Expected response:
+
+```json
+"Deleted successfully"
+```
+
+### 7. Confirm the list is empty again
+
+```bash
+curl http://localhost:8000/users
+```
+
+Expected response:
+
+```json
+[]
+```
+
+## Common Commands
+
+| Command | What it does |
+| --- | --- |
+| `curl http://localhost:8000/` | Test the root endpoint |
+| `curl http://localhost:8000/users` | List users |
+| `curl -X POST ...` | Create a user |
+| `curl -X PUT ...` | Update a user |
+| `curl -X DELETE ...` | Delete a user |
+| `http://localhost:8000/docs` | Open the interactive Swagger UI |
+
+## Why This App Structure Is Useful
+
+This project is intentionally small, but the structure already follows patterns used in larger APIs:
+
+- models are separated from request and response schemas,
+- database access is separated from route definitions,
+- each request gets its own database session,
+- FastAPI generates interactive documentation automatically.
+
+That makes the app easier to test, easier to extend, and easier to containerize in the next chapter.
+
+## Summary
+
+In this lesson, you:
+
+- reviewed what APIs and REST endpoints are,
+- built a FastAPI app connected to PostgreSQL,
+- used SQLAlchemy models to represent database tables,
+- used Pydantic schemas to validate and shape API data,
+- ran the app locally with Uvicorn,
+- tested the full CRUD flow with `curl`.
+
+In the next lesson, we will put this FastAPI app into a Docker container and connect it to the PostgreSQL container.
