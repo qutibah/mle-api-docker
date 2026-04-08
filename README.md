@@ -61,28 +61,29 @@ The [requirements.txt](requirements.txt) file contains all libraries and depende
 
 - Installing **psql** is helpful if you want to connect to PostgreSQL from your machine, but the Docker lessons also include a `docker exec ... psql` fallback if you prefer not to install it locally.
 
-    ### **`macOS`**
+### **`macOS`**
 
-    ```sh
-    brew install postgresql@17
+```sh
+# To install psql
+brew install postgresql@17
 
-    # To start services
-    brew services start postgresql@17
+# To start services
+brew services start postgresql@17
 
-    # To stop services
-    brew services stop postgresql@17
-    ```
+# To stop services
+brew services stop postgresql@17
+```
 
-    In case `psql` doesn't work:
+In case `psql` doesn't work:
 
-    ```sh
-    brew install libpq
-    brew link --force libpq
-    ```
+```sh
+brew install libpq
+brew link --force libpq
+```
 
-    ### **`Windows`**
+### **`Windows`**
 
-    Please follow the installation instructions [**here**](https://www.w3schools.com/postgresql/postgresql_install.php).
+Please follow the [installation instructions](https://www.w3schools.com/postgresql/postgresql_install.php).
 
 ## Diagram
 
