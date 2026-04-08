@@ -27,8 +27,8 @@ Please make sure you **use this repository as a template** and set up a new virt
 pyenv local 3.11.3
 python -m venv .venv
 source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
 ### **`Windows`**
@@ -40,7 +40,7 @@ pyenv local 3.11.3
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 For `Git-Bash` CLI:
@@ -49,27 +49,28 @@ For `Git-Bash` CLI:
 pyenv local 3.11.3
 python -m venv .venv
 source .venv/Scripts/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
 The [requirements.txt](requirements.txt) file contains all libraries and dependencies needed to execute the notebooks.
 
 ## Setup
 
-- You need to install `Docker` for this task. Please **install the Desktop version** (for MacOS with M1/M2 chips there is no alternative). You can find the installation instructions [**here**](https://docs.docker.com/get-docker/).
+- You will need **Docker Desktop** installed and running on your machine. If you do not have it installed, please follow the installation instructions [**here**](https://docs.docker.com/get-docker/).
 
-- Installing `psql` is helpful if you want to connect to PostgreSQL from your machine, but the Docker lessons also include a `docker exec ... psql` fallback if you prefer not to install it locally.
+- Installing **psql** is helpful if you want to connect to PostgreSQL from your machine, but the Docker lessons also include a `docker exec ... psql` fallback if you prefer not to install it locally.
 
 ### **`macOS`**
 
 ```sh
+# To install psql
 brew install postgresql@17
 
 # To start services
 brew services start postgresql@17
 
-# To stop
+# To stop services
 brew services stop postgresql@17
 ```
 
