@@ -57,7 +57,7 @@ The [requirements.txt](requirements.txt) file contains all libraries and depende
 
 ## Setup
 
-- You will need **Docker Desktop** installed and running on your machine. If you do not have it installed, please follow the installation instructions [**here**](https://docs.docker.com/get-docker/).
+- You will need **Docker Desktop** installed and running on your machine. If you do not have it installed, please follow the [installation instructions](https://docs.docker.com/get-docker/).
 
 - Installing **psql** is helpful if you want to connect to PostgreSQL from your machine, but the Docker lessons also include a `docker exec ... psql` fallback if you prefer not to install it locally.
 
