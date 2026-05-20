@@ -10,13 +10,6 @@ This repository contains a notebook explaining how to work with JSON data, follo
 - [04 - Intro to Docker - Part 2](04-intro-to-docker-part2.md): Containerize your API and connect it to your database manually.
 - [05 - Intro to Docker Compose](05-intro-to-docker-compose.md): Introduction to Docker Compose and how to define a multi-container application automatically.
 
-## Mermaid Diagrams
-
-This repository contains Mermaid diagrams. If you want them to render in VS Code, we recommend installing the `Markdown Preview Mermaid Support` extension:
-
-- [Install in VS Code](vscode:extension/bierner.markdown-mermaid)
-- [View on Marketplace](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-mermaid)
-
 ## Environment
 
 Please make sure you **use this repository as a template** and set up a new virtual environment. You can use the following commands:
