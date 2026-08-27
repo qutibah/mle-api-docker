@@ -1,68 +1,92 @@
-from fastapi import Depends, FastAPI, HTTPException
-import models
-import schemas
-from database import engine, SessionLocal
+from typing import Annotated
+
+from fastapi import Depends, FastAPI, HTTPException, Response, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from service import models, schemas
+from service.database import Base, engine, get_db
 
-app = FastAPI()
+app = FastAPI(title="User Directory API", version="1.0.0")
 
-models.Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
-
-# Dependency
-def get_db():
-    try:
-        db = SessionLocal()
-        yield db
-    finally:
-        db.close()
+DatabaseSession = Annotated[Session, Depends(get_db)]
 
 
-@app.get("/")
-def index():
-    return {"data": "user list"}
+def get_user_or_404(db: Session, user_id: int) -> models.User:
+    """Return one user or raise the public not-found response."""
+    user = db.get(models.User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 
-# Get all users
+def ensure_email_available(
+    db: Session, email: str, *, exclude_user_id: int | None = None
+) -> None:
+    """Raise a conflict when another user already owns an email address."""
+    statement = select(models.User).where(models.User.email == email)
+    if exclude_user_id is not None:
+        statement = statement.where(models.User.id != exclude_user_id)
+    if db.scalar(statement) is not None:
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+
+@app.get("/", tags=["health"])
+def index() -> dict[str, str]:
+    """Return a lightweight service status response."""
+    return {"status": "ok"}
+
+
 @app.get("/users", response_model=list[schemas.UserOut])
-def get_all_users(db: Session = Depends(get_db)):
-    return db.query(models.User).all()
+def get_all_users(db: DatabaseSession) -> list[models.User]:
+    """Return all persisted users ordered by identifier."""
+    statement = select(models.User).order_by(models.User.id)
+    return list(db.scalars(statement))
 
 
-# Add user
-@app.post("/users", response_model=schemas.UserOut)
-def create_user(request: schemas.UserModel, db: Session = Depends(get_db)):
-    new_user = models.User(
-        name=request.name, email=request.email, password=request.password
-    )
+@app.get("/users/{user_id}", response_model=schemas.UserOut)
+def get_user(user_id: int, db: DatabaseSession) -> models.User:
+    """Return one persisted user by identifier."""
+    return get_user_or_404(db, user_id)
+
+
+@app.post("/users", response_model=schemas.UserOut, status_code=status.HTTP_201_CREATED)
+def create_user(request: schemas.UserCreate, db: DatabaseSession) -> models.User:
+    """Validate and persist a new user."""
+    email = str(request.email)
+    ensure_email_available(db, email)
+
+    new_user = models.User(name=request.name, email=email)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
 
 
-# Update user
-@app.put("/users/{id}")
-def update_user(id: int, request: schemas.UserUpdate, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == id)
-    existing_user = user.first()
-    if existing_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+@app.put("/users/{user_id}", response_model=schemas.UserOut)
+def update_user(
+    user_id: int, request: schemas.UserUpdate, db: DatabaseSession
+) -> models.User:
+    """Replace the editable fields of one user."""
+    existing_user = get_user_or_404(db, user_id)
 
-    for field, value in request.model_dump().items():
-        setattr(existing_user, field, value)
+    email = str(request.email)
+    ensure_email_available(db, email, exclude_user_id=user_id)
 
+    existing_user.name = request.name
+    existing_user.email = email
     db.commit()
-    return "Updated successfully"
+    db.refresh(existing_user)
+    return existing_user
 
 
-# Delete user
-@app.delete("/users/{id}")
-def delete(id: int, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == id)
-    if not user.first():
-        raise HTTPException(status_code=404, detail="User not found")
-    user.delete(synchronize_session=False)
+@app.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int, db: DatabaseSession) -> Response:
+    """Delete one user or return 404 when it does not exist."""
+    user = get_user_or_404(db, user_id)
+
+    db.delete(user)
     db.commit()
-    return "Deleted successfully"
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
