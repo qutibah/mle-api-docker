@@ -1,50 +1,28 @@
-# Docker Compose
+# Run the Stack With Docker Compose
 
-In chapter 4, we manually built the app image, created a Docker network, and started the PostgreSQL and FastAPI containers one by one. That approach is useful for learning, but it quickly becomes repetitive.
+[Docker Compose](https://docs.docker.com/compose/) describes a multi-container application in one YAML file. It replaces the repeated build, network, volume, environment, and startup commands from lesson 4 while preserving the same service boundaries.
 
-**Docker Compose lets us define a multi-container application in one YAML file and start it with a single command.** It automates the container creation, the shared network, and the service wiring that we handled manually in the previous chapter.
-
-You do not need to install Docker Compose separately if you are using Docker Desktop. It is already available through the `docker compose` command.
-
-## What Compose Automates
-
-With Compose, we no longer need to:
-
-- create the Docker network manually
-- run the database container separately
-- run the app container separately
-- remember the exact `docker run` flags for each service
-
-Instead, we describe the whole application once in `docker-compose.yaml`.
-
-## What We Are Building
-
-The application still has the same two services:
-
-- `db` for PostgreSQL
-- `app` for FastAPI
-
-The difference is that Compose now manages the network and startup flow for us.
+## Compose Architecture
 
 ```mermaid
 flowchart LR
-    Client["Browser / curl"] -->|"http://localhost:8000"| App["Compose service: app"]
-    App -->|"DB_CONN uses host db"| DB["Compose service: db"]
-    DB -->|"stores data in"| Volume["postgres-db-volume"]
-    App -->|"runs on shared Compose network"| Net["Compose bridge network"]
-    DB --> Net
+    Client["Browser or curl"] -->|"localhost:8000"| App["Compose service: app"]
+    App -->|"db:5432"| DB["Compose service: db"]
+    DB --> Volume["Named volume: postgres-data"]
+    App --- Network["Compose default network"]
+    DB --- Network
 ```
+
+Compose automatically creates a project network. Service names become DNS hostnames on that network, so the API connects to `db`, not `localhost`.
 
 ## The Compose File
 
-The file **`docker-compose.yaml`** contains:
+[`docker-compose.yaml`](docker-compose.yaml) defines the complete stack:
 
 ```yaml
 services:
   db:
     image: postgres:17
-    container_name: postgres_compose
-    restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -52,235 +30,138 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./postgres-db-volume:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
-    networks:
-      - my_network_compose
 
   app:
     build:
-      context: service
-      dockerfile: Dockerfile
-    container_name: fastapi_compose
-    restart: always
+      context: .
+      dockerfile: service/Dockerfile
     environment:
-      DB_CONN: postgresql://postgres:postgres@db:5432/fastapi_db
+      DB_CONN: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     ports:
       - "8000:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:8000/', timeout=2)
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     depends_on:
       db:
         condition: service_healthy
-    networks:
-      - my_network_compose
 
-networks:
-  my_network_compose:
-    driver: bridge
+volumes:
+  postgres-data:
 ```
 
-## How to Read This File
+## How to Read the Configuration
 
-### Services
-
-Each entry under `services:` defines one containerized part of the application.
-
-| Service | Purpose |
+| Field | Role in this stack |
 | --- | --- |
-| `db` | PostgreSQL database |
-| `app` | FastAPI application |
+| `image` | Pull the official PostgreSQL image |
+| `build` | Build the API using its Dockerfile and the root context |
+| `environment` | Supply per-container configuration at runtime |
+| `ports` | Publish service ports to the host |
+| `volumes` | Persist PostgreSQL data independently of containers |
+| `healthcheck` | Check database readiness and API HTTP availability |
+| `depends_on` | Wait for database health before starting the API |
 
-### Important YAML fields
+The `${...}` expressions are interpolated from the ignored root `.env` file. The resolved database URL uses `db` because that is the database service name inside the Compose network.
 
-| Field | Meaning |
-| --- | --- |
-| `image` | Use a prebuilt image |
-| `build` | Build an image from a Dockerfile |
-| `environment` | Set environment variables inside the container |
-| `ports` | Publish container ports to the host |
-| `volumes` | Persist or share files |
-| `depends_on` | Start one service before another |
-| `healthcheck` | Tell Docker how to check whether a service is actually ready |
-| `networks` | Attach services to a shared network |
+## Validate the Resolved Configuration
 
-## Why `DB_CONN` Is Different Here
-
-In chapter 3, the API ran on your host machine, so `localhost` in the root `.env` was correct.
-
-In chapter 4, we passed a container-specific `DB_CONN` manually with:
+Create `.env` if needed, then ask Compose to render the final configuration:
 
 ```bash
--e DB_CONN='postgresql://postgres:postgres@postgres_cont:5432/fastapi_db'
+cp .env.example .env
+docker compose config
 ```
 
-In Compose, the same idea still applies: the app runs inside a container, so it must connect to the database **by service name**, not by `localhost`.
+Inspect the output before starting services. This catches missing variables, invalid YAML, and path mistakes. The rendered output includes development credentials, so do not publish it as a build artifact or log it in a shared production system.
 
-That is why the app service uses:
-
-```text
-postgresql://postgres:postgres@db:5432/fastapi_db
-```
-
-Here, `db` is the Compose service name, and Docker Compose automatically makes that name available on the shared network.
-
-The root `.env` file can stay unchanged for host-based local runs. Compose overrides only the app container’s connection string in `docker-compose.yaml`.
-
-## Why the Volume Path Matters
-
-The PostgreSQL image stores its data in:
-
-```text
-/var/lib/postgresql/data
-```
-
-That is why the `db` service mounts:
-
-```yaml
-- ./postgres-db-volume:/var/lib/postgresql/data
-```
-
-This keeps the database data on your machine so it survives container restarts.
-
-## Running the Compose Application
-
-### What we are doing
-
-We are asking Compose to build the app image if needed, create the network, and start both services.
-
-### Command
+## Build and Start the Stack
 
 ```bash
-docker compose up -d
+docker compose up --build --wait
 ```
 
-### What the command means
+Compose now:
 
-- `docker compose up` creates and starts the services
-- `-d` runs them in detached mode, in the background
+1. creates the project network and named volume,
+2. starts PostgreSQL,
+3. waits for the database healthcheck,
+4. builds and starts the API,
+5. waits for the API healthcheck,
+6. publishes ports `5432` and `8000` to the host.
 
-### What to expect
+![Compose startup progressing from configuration through database health to API readiness](assets/03-compose-service-readiness.png)
 
-Compose will:
+*Diagram based on Docker's official [Compose startup order](https://docs.docker.com/compose/how-tos/startup-order/) guidance.*
 
-- create the `app` image from `service/Dockerfile`
-- start the PostgreSQL container
-- wait until PostgreSQL is healthy
-- start the FastAPI container
-- create the shared bridge network automatically
-
-## Checking the Running Services
-
-To see whether the services are running:
+## Observe Runtime State
 
 ```bash
 docker compose ps
-```
-
-You should see both `db` and `app`.
-
-To follow the logs:
-
-```bash
+docker compose logs db
+docker compose logs app
 docker compose logs -f
 ```
 
-To view only the app logs:
+`docker compose ps` should show both the database and the API as healthy.
 
-```bash
-docker compose logs app
-```
-
-If the FastAPI service started correctly, you should see Uvicorn startup messages.
-
-## Testing the Compose Setup
-
-Now test the application from your host machine.
-
-### Root endpoint
+## Exercise the API
 
 ```bash
 curl http://localhost:8000/
-```
 
-Expected response:
+curl -X POST http://localhost:8000/users \
+    -H "Content-Type: application/json" \
+    -d '{"name":"Jane Doe","email":"jane.doe@example.com"}'
 
-```json
-{"data":"user list"}
-```
-
-### Empty user list
-
-```bash
 curl http://localhost:8000/users
 ```
 
-Expected response on a fresh database:
+The same Swagger UI remains available at <http://localhost:8000/docs>. Containerization changes deployment mechanics, not the API contract.
 
-```json
-[]
-```
+## Rebuild After Code Changes
 
-### Swagger UI
-
-Open: <http://localhost:8000/docs>
-
-If that page loads, the Compose-managed app is reachable from your browser and the API is connected to the database correctly.
-
-## Why Compose Is Simpler Than Chapter 4
-
-Compare this chapter with the manual setup from chapter 4:
-
-| Manual Docker | Docker Compose |
-| --- | --- |
-| Build images separately | Build is defined in YAML |
-| Create network manually | Network is created automatically |
-| Run containers with long commands | One `docker compose up -d` command |
-| Pass app DB host manually | Service name `db` is already known on the network |
-
-That is the main value of Compose: it turns a collection of related container commands into one application definition.
-
-## Stopping the Compose Application
-
-To stop the services without removing them:
+The image contains a copy of `service/`, so source changes require a rebuild:
 
 ```bash
-docker compose stop
+docker compose up --build --wait app
 ```
 
-To stop and remove the containers and network:
+This repository intentionally avoids a development bind mount. The lesson demonstrates reproducible image builds rather than live-reload container development.
+
+## Stop or Reset the Stack
+
+Stop and remove containers and the project network while preserving database data:
 
 ```bash
 docker compose down
 ```
 
-If you also want to remove the persisted database volume directory content on your machine, delete `postgres-db-volume` manually afterward.
+Also delete the named database volume only when a complete reset is intended:
 
-## Common Compose Commands
+```bash
+docker compose down --volumes
+```
 
-| Command | What it does |
-| --- | --- |
-| `docker compose build` | Build or rebuild service images |
-| `docker compose up` | Create and start services |
-| `docker compose up -d` | Start services in the background |
-| `docker compose ps` | Show service status |
-| `docker compose logs` | Show logs from all services |
-| `docker compose logs -f` | Follow logs in real time |
-| `docker compose logs app` | Show logs for only the app service |
-| `docker compose exec app bash` | Open a shell in the app container |
-| `docker compose stop` | Stop running services |
-| `docker compose down` | Stop and remove containers and networks |
+## Checkpoint
+
+**What does the PostgreSQL healthcheck add beyond container startup order?**
+
+**Answer:** A running PostgreSQL process may still be initializing and unable to accept queries. The healthcheck tests readiness, and the long-form `depends_on` condition delays the API until that readiness check succeeds.
 
 ## Summary
 
-In this chapter, you:
-
-- used `docker-compose.yaml` to define the database and API services,
-- let Compose build the app image automatically,
-- let Compose create the shared network automatically,
-- connected the app to the database using the service hostname `db`,
-- started the whole application with `docker compose up -d`.
-
-At this point, you have the same two-container application from chapter 4, but managed in a much simpler and more repeatable way.
+Docker Compose now expresses the same two-service architecture as versioned configuration. One command builds the locked API image, starts both services in dependency order, creates their private network, and attaches persistent database storage.
