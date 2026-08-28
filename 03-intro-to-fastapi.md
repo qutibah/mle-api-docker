@@ -1,473 +1,232 @@
-# Application Programming Interfaces (APIs)
+# Build a Typed CRUD API With FastAPI
 
-**An API is a way for software systems to communicate with each other.** In a web API, one application sends an HTTP request and another application sends back a response, often in JSON format.
+An application programming interface defines how software components exchange requests and responses. This lesson uses [FastAPI](https://fastapi.tiangolo.com/tutorial/) to expose an HTTP API, [Pydantic](https://docs.pydantic.dev/latest/concepts/models/) to validate its JSON contracts, and [SQLAlchemy](https://docs.sqlalchemy.org/en/20/tutorial/) to persist users in PostgreSQL.
 
-In this chapter, we will build a small **REST API** with **FastAPI**. REST is a common style for web APIs where data is exposed through URLs and standard HTTP methods such as:
+The service implements CRUD operations:
 
-- `GET` to read data
-- `POST` to create data
-- `PUT` to update data
-- `DELETE` to remove data
+- **Create** a user with `POST`
+- **Read** users with `GET`
+- **Update** a user with `PUT`
+- **Delete** a user with `DELETE`
 
-FastAPI is a modern Python framework for building APIs. It is popular because it is:
+## Request Lifecycle
 
-- easy to read and write
-- fast in development and at runtime
-- strongly typed
-- able to generate interactive API documentation automatically
+![Typed FastAPI request moving through Pydantic, a route, SQLAlchemy, and PostgreSQL](assets/02-fastapi-request-lifecycle.png)
 
-In this repository, FastAPI is the application layer that sits in front of the PostgreSQL database we created in the previous Docker lesson. FastAPI receives requests, validates input data, talks to the database through SQLAlchemy, and returns JSON responses.
+*Diagram based on the official guides for [FastAPI request bodies](https://fastapi.tiangolo.com/tutorial/body/), [Pydantic models](https://docs.pydantic.dev/latest/concepts/models/), and [SQLAlchemy sessions](https://docs.sqlalchemy.org/en/20/orm/session_basics.html).*
 
-## What We Are Building
-
-We will build a small CRUD API for users. CRUD stands for:
-
-- **Create**
-- **Read**
-- **Update**
-- **Delete**
-
-Our application has four main building blocks:
-
-| File | Responsibility |
-| --- | --- |
-| `database.py` | Connect to PostgreSQL and create SQLAlchemy session helpers |
-| `models.py` | Define SQLAlchemy table models |
-| `schemas.py` | Define Pydantic models for request and response data |
-| `main.py` | Create the FastAPI app and define the API routes |
-
-At a high level, the flow looks like this:
-
-```mermaid
-flowchart LR
-    Client["Browser / curl / Swagger UI"] --> API["FastAPI App"]
-    API --> Schemas["Pydantic Schemas"]
-    API --> Session["SQLAlchemy Session"]
-    Session --> Models["SQLAlchemy Models"]
-    Models --> DB["PostgreSQL Database"]
-    DB --> Models
-    Models --> API
-    Schemas --> API
-    API --> Client
-```
+Each boundary has one responsibility. FastAPI handles HTTP, Pydantic owns the external data contract, and SQLAlchemy owns database access.
 
 ## Before You Start
 
-This chapter assumes that the PostgreSQL database from [02-intro-to-docker.md](02-intro-to-docker.md) is already running and that the root `.env` file points to:
+Create the ignored local configuration file and start the PostgreSQL container from lesson 2:
+
+```bash
+cp .env.example .env
+docker start postgres_cont
+docker exec postgres_cont pg_isready -U postgres -d fastapi_db
+```
+
+The host-based service uses this connection string:
+
+```dotenv
+DB_CONN=postgresql+psycopg://postgres:postgres@localhost:5432/fastapi_db
+```
+
+`localhost` is correct here because Uvicorn will run on the host. Lesson 4 changes the hostname when the API moves into a container.
+
+## Service Structure
 
 ```text
-DB_CONN='postgresql://postgres:postgres@localhost:5432/fastapi_db'
+service/
+├── __init__.py
+├── database.py
+├── models.py
+├── schemas.py
+└── main.py
 ```
 
-That `localhost` host is correct for this chapter because we are running FastAPI directly on your machine, not inside a Docker container yet.
-
-## How the Pieces Fit Together
-
-The app uses three main libraries together:
-
-| Tool | What it does here |
+| File | Responsibility |
 | --- | --- |
-| **FastAPI** | Defines routes and returns HTTP responses |
-| **Pydantic** | Validates request bodies and shapes response data |
-| **SQLAlchemy** | Talks to PostgreSQL using Python objects |
+| `database.py` | Load `DB_CONN`, create the engine, and provide request-scoped sessions |
+| `models.py` | Map Python classes to database tables |
+| `schemas.py` | Define validated request and response bodies |
+| `main.py` | Configure FastAPI and implement routes |
 
-That separation is useful:
+## Database Connection and Session
 
-- FastAPI handles the web layer
-- Pydantic handles data validation and serialization
-- SQLAlchemy handles database access
-
-This keeps the code easier to understand and easier to extend later.
-
-## Creating the Database Connection
-
-### What we are doing
-
-We are creating the reusable database connection setup for the app.
-
-### Code
-
-The file **`service/database.py`** contains:
+The central parts of `service/database.py` are:
 
 ```python
-import os
+DATABASE_URL = os.getenv("DB_CONN")
 
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
-
-load_dotenv()
-
-SQLALCHEMY_DATABASE_URI = os.getenv("DB_CONN")
-
-if SQLALCHEMY_DATABASE_URI is None:
+if DATABASE_URL is None:
     raise ValueError("DB_CONN environment variable is required")
 
-engine = create_engine(SQLALCHEMY_DATABASE_URI)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Base class shared by the service's SQLAlchemy models."""
+
+
+def get_db() -> Generator[Session]:
+    """Yield one database session for a request, then close it."""
+    with SessionLocal() as session:
+        yield session
 ```
 
-### What this does
+`get_db()` is a FastAPI dependency. The context manager closes the session after the request succeeds or fails, so a route does not need to duplicate connection cleanup.
 
-- `load_dotenv()` loads values from the `.env` file
-- `os.getenv("DB_CONN")` reads the database connection string
-- `create_engine(...)` creates the SQLAlchemy database engine
-- `sessionmaker(...)` creates a factory for database sessions
-- `declarative_base()` creates the base class for our SQLAlchemy models
+For this self-contained lesson, `Base.metadata.create_all()` creates missing tables when the service starts. Production systems normally manage reviewed, reversible schema changes with a migration tool such as [Alembic](https://alembic.sqlalchemy.org/en/latest/) instead of relying on automatic table creation.
 
-### Why `SessionLocal` matters
+## SQLAlchemy Model
 
-Each request should get its own database session. That session is opened when needed and then closed when the request finishes. This helps keep database access organized and avoids leaving connections open longer than necessary.
-
-## Creating the Database Model
-
-### What we are doing
-
-We are defining the Python class that maps to the `users` table in PostgreSQL.
-
-### Code
-
-The file **`service/models.py`** contains:
+`service/models.py` uses SQLAlchemy 2 typed mappings:
 
 ```python
-from sqlalchemy import Column, Integer, String
-from database import Base
-
-
 class User(Base):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
-    email = Column(String, unique=True, index=True)
-    password = Column(String)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
 ```
 
-### What this does
+The Python annotations describe model attributes, while `mapped_column()` describes database behavior such as the primary key, maximum length, uniqueness, and index.
 
-- `User` is a SQLAlchemy model
-- `__tablename__ = "users"` maps the class to the `users` table
-- Each `Column(...)` describes one database column
+This directory API intentionally stores only profile data. Authentication and password storage require a separate security design and should not be represented by saving plain-text passwords in a CRUD example.
 
-SQLAlchemy lets us work with Python objects instead of writing raw SQL for every operation.
+## Pydantic Contracts
 
-## Creating the Pydantic Schemas
-
-### What we are doing
-
-We are defining the request and response shapes for the API.
-
-### Code
-
-The file **`service/schemas.py`** contains:
+`service/schemas.py` separates incoming payloads from outgoing representations:
 
 ```python
-from pydantic import BaseModel, ConfigDict
+class UserBase(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    email: EmailStr
 
 
-class UserModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    name: str
-    email: str
-    password: str
+class UserCreate(UserBase):
+    pass
 
 
-class UserOut(BaseModel):
+class UserUpdate(UserBase):
+    pass
+
+
+class UserOut(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    name: str
-    email: str
-
-
-class UserUpdate(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    name: str
-    email: str
-    password: str
 ```
 
-### What this does
+`EmailStr` rejects malformed addresses before a route reaches the database. `from_attributes=True` lets Pydantic serialize a SQLAlchemy model into the public response shape.
 
-- `UserModel` describes the body for creating a user
-- `UserOut` describes what we send back to clients
-- `UserUpdate` describes the body for updating a user
+Separate class names keep the API contract explicit even when two request bodies currently have the same fields. They can evolve independently later.
 
-### Why `from_attributes=True` matters
+## Request-Scoped Dependency
 
-FastAPI often returns SQLAlchemy objects directly. In Pydantic v2, `ConfigDict(from_attributes=True)` tells Pydantic that it is allowed to build response data from object attributes, not only from plain dictionaries.
-
-That is why the API can return a SQLAlchemy `User` object and still produce valid JSON automatically.
-
-Also notice that `UserOut` does **not** include a `password` field. This means the password is stored in the database, but it is not exposed in API responses.
-
-## Creating the FastAPI App
-
-### What we are doing
-
-We are combining the database layer, schemas, and routes into one FastAPI application.
-
-### Code
-
-The file **`service/main.py`** contains:
+FastAPI can combine a type annotation with a dependency:
 
 ```python
-from fastapi import Depends, FastAPI, HTTPException
-import models
-import schemas
-from database import engine, SessionLocal
-from sqlalchemy.orm import Session
+DatabaseSession = Annotated[Session, Depends(get_db)]
+```
 
+Routes that declare `db: DatabaseSession` receive one open SQLAlchemy session. FastAPI calls the dependency and handles its cleanup automatically.
 
-app = FastAPI()
+## CRUD Routes
 
-models.Base.metadata.create_all(bind=engine)
+The create route validates the request, writes a row, and returns the persisted model with a `201 Created` status:
 
-
-def get_db():
-    try:
-        db = SessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-@app.get("/")
-def index():
-    return {"data": "user list"}
-
-
-@app.get("/users", response_model=list[schemas.UserOut])
-def get_all_users(db: Session = Depends(get_db)):
-    return db.query(models.User).all()
-
-
-@app.post("/users", response_model=schemas.UserOut)
-def create_user(request: schemas.UserModel, db: Session = Depends(get_db)):
-    new_user = models.User(
-        name=request.name, email=request.email, password=request.password
-    )
+```python
+@app.post("/users", response_model=schemas.UserOut, status_code=201)
+def create_user(request: schemas.UserCreate, db: DatabaseSession) -> models.User:
+    new_user = models.User(name=request.name, email=str(request.email))
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
-
-
-@app.put("/users/{id}")
-def update_user(id: int, request: schemas.UserUpdate, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == id)
-    existing_user = user.first()
-    if existing_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    for field, value in request.model_dump().items():
-        setattr(existing_user, field, value)
-
-    db.commit()
-    return "Updated successfully"
-
-
-@app.delete("/users/{id}")
-def delete(id: int, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == id)
-    if not user.first():
-        raise HTTPException(status_code=404, detail="User not found")
-    user.delete(synchronize_session=False)
-    db.commit()
-    return "Deleted successfully"
 ```
 
-### What this does
+The list route uses SQLAlchemy's `select()` interface and a deterministic order:
 
-- `app = FastAPI()` creates the API application
-- `models.Base.metadata.create_all(bind=engine)` creates the tables if they do not exist yet
-- `get_db()` opens a session for the request and closes it afterward
-- Each route function handles one API endpoint
+```python
+@app.get("/users", response_model=list[schemas.UserOut])
+def get_all_users(db: DatabaseSession) -> list[models.User]:
+    statement = select(models.User).order_by(models.User.id)
+    return list(db.scalars(statement))
+```
 
-### FastAPI decorators at a glance
+Update and delete first retrieve the target row with `db.get()`. Missing identifiers return `404 Not Found` instead of silently succeeding.
 
-| Decorator | HTTP Method | Purpose |
+| Method | Path | Success response |
 | --- | --- | --- |
-| `@app.get()` | GET | Read data |
-| `@app.post()` | POST | Create data |
-| `@app.put()` | PUT | Update data |
-| `@app.delete()` | DELETE | Delete data |
+| `GET` | `/` | Service status |
+| `GET` | `/users` | Ordered list of users |
+| `GET` | `/users/{user_id}` | One user or `404 Not Found` |
+| `POST` | `/users` | `201` and the created user |
+| `PUT` | `/users/{user_id}` | Updated user |
+| `DELETE` | `/users/{user_id}` | `204 No Content` |
 
-### Endpoint summary
+Malformed request bodies return `422 Unprocessable Content`, missing identifiers return `404 Not Found`, and duplicate email addresses return `409 Conflict`. These responses keep validation and domain failures at the HTTP boundary instead of exposing a database exception.
 
-| Method | Path | Purpose | Typical response |
-| --- | --- | --- | --- |
-| `GET` | `/` | Quick sanity endpoint | `{"data":"user list"}` |
-| `GET` | `/users` | Return all users | `[]` or a list of users |
-| `POST` | `/users` | Create a user | Created user without showing password |
-| `PUT` | `/users/{id}` | Update one user | `"Updated successfully"` |
-| `DELETE` | `/users/{id}` | Delete one user | `"Deleted successfully"` |
+## Run the Host-Based API
 
-## Running the App
-
-### What we are doing
-
-We are starting the FastAPI development server locally.
-
-### Command
-
-Move into the `service` folder first:
+From the repository root:
 
 ```bash
-cd service
-uvicorn main:app --reload --port 8000
+uv run uvicorn service.main:app --reload --port 8000
 ```
 
-### What the command means
+Open the generated [Swagger UI](http://localhost:8000/docs) or inspect the [OpenAPI schema](http://localhost:8000/openapi.json).
 
-- `uvicorn` starts the ASGI server
-- `main:app` means "use the `app` object from `main.py`"
-- `--reload` restarts the server automatically when code changes
-- `--port 8000` serves the app on port `8000`
+## Exercise the Contract
 
-### What to expect
-
-Once the app starts, open:
-
-- [http://localhost:8000/docs](http://localhost:8000/docs) for Swagger UI
-- [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json) for the OpenAPI schema
-
-If port `8000` is already in use, choose another port with `--port`.
-
-## Testing the App
-
-You can test the API from the interactive docs, but it is also useful to send requests from the terminal with `curl`.
-
-Open a **new terminal** so the Uvicorn server can keep running in the first one.
-
-### 1. Check the root endpoint
+Check the service and initial collection:
 
 ```bash
 curl http://localhost:8000/
-```
-
-Expected response:
-
-```json
-{"data":"user list"}
-```
-
-### 2. Check the empty user list
-
-On a fresh database, this endpoint should return an empty list:
-
-```bash
 curl http://localhost:8000/users
 ```
 
-Expected response:
-
-```json
-[]
-```
-
-Notice that if you added a user to the database in the previous chapter and did not stop and remove the container before starting a new one, you will see this user listed here instead of an empty list. In that case, the user to be created in the next step will have `"id":2`.
-
-### 3. Create a user
+Create a user:
 
 ```bash
 curl -X POST http://localhost:8000/users \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Jane Doe","email":"jane.doe@example.com","password":"password1234"}'
+    -H "Content-Type: application/json" \
+    -d '{"name":"Jane Doe","email":"jane.doe@example.com"}'
 ```
 
-Expected response:
-
-```json
-{"id":1,"name":"Jane Doe","email":"jane.doe@example.com"}
-```
-
-Notice that the password is not returned. That happens because the route uses `response_model=schemas.UserOut`.
-
-### 4. List users again
+Read user `1` directly:
 
 ```bash
-curl http://localhost:8000/users
+curl http://localhost:8000/users/1
 ```
 
-Expected response:
-
-```json
-[{"id":1,"name":"Jane Doe","email":"jane.doe@example.com"}]
-```
-
-### 5. Update the user
+Update user `1`:
 
 ```bash
 curl -X PUT http://localhost:8000/users/1 \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Jane Smith","email":"jane.smith@example.com","password":"newpass"}'
+    -H "Content-Type: application/json" \
+    -d '{"name":"Jane Smith","email":"jane.smith@example.com"}'
 ```
 
-Expected response:
-
-```json
-"Updated successfully"
-```
-
-### 6. Delete the user
+Delete the same user:
 
 ```bash
-curl -X DELETE http://localhost:8000/users/1
+curl -i -X DELETE http://localhost:8000/users/1
 ```
 
-Expected response:
+The delete response has status `204` and no JSON body. Repeating the request returns `404` because the row no longer exists.
 
-```json
-"Deleted successfully"
-```
+## Checkpoint
 
-### 7. Confirm the list is empty again
+**Why use both a SQLAlchemy model and a Pydantic model for a user?**
 
-```bash
-curl http://localhost:8000/users
-```
-
-Expected response:
-
-```json
-[]
-```
-
-## Common Commands
-
-| Command | What it does |
-| --- | --- |
-| `curl http://localhost:8000/` | Test the root endpoint |
-| `curl http://localhost:8000/users` | List users |
-| `curl -X POST ...` | Create a user |
-| `curl -X PUT ...` | Update a user |
-| `curl -X DELETE ...` | Delete a user |
-| `http://localhost:8000/docs` | Open the interactive Swagger UI |
-
-## Why This App Structure Is Useful
-
-This project is intentionally small, but the structure already follows patterns used in larger APIs:
-
-- models are separated from request and response schemas,
-- database access is separated from route definitions,
-- each request gets its own database session,
-- FastAPI generates interactive documentation automatically.
-
-That makes the app easier to test, easier to extend, and easier to containerize in the next chapter.
+**Answer:** The SQLAlchemy model describes database persistence. The Pydantic models describe public request and response contracts. Keeping them separate prevents database implementation details from becoming accidental API fields and lets each boundary evolve independently.
 
 ## Summary
 
-In this lesson, you:
-
-- reviewed what APIs and REST endpoints are,
-- built a FastAPI app connected to PostgreSQL,
-- used SQLAlchemy models to represent database tables,
-- used Pydantic schemas to validate and shape API data,
-- ran the app locally with Uvicorn,
-- tested the full CRUD flow with `curl`.
-
-In the next lesson, we will put this FastAPI app into a Docker container and connect it to the PostgreSQL container.
+The service now validates typed JSON payloads, opens one SQLAlchemy session per request, implements all four CRUD operations, returns meaningful HTTP status codes, and exposes an automatically generated OpenAPI contract.

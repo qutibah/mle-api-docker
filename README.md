@@ -1,136 +1,124 @@
-# Intro to APIs and Docker
+# APIs, PostgreSQL, and Docker
 
-This repository contains a notebook explaining how to work with JSON data, followed by a few Markdown lessons that walk through building a simple FastAPI app and containerizing it with Docker.
+This repository follows a small web service from JSON fundamentals to a typed [FastAPI](https://fastapi.tiangolo.com/) CRUD API backed by [PostgreSQL](https://www.postgresql.org/docs/) and [SQLAlchemy](https://docs.sqlalchemy.org/en/20/), then packages the service with [Docker](https://docs.docker.com/) and runs the complete stack with [Docker Compose](https://docs.docker.com/compose/).
 
 ## Learning Path
 
-- [01 - Intro to JSON](01-intro-to-json.ipynb): Introduction to JSON and how to read, modify, serialize, and validate JSON data.
-- [02 - Intro to Docker](02-intro-to-docker.md): Small introduction to Docker and how to spin up a local PostgreSQL database with it.
-- [03 - Intro to FastAPI](03-intro-to-fastapi.md): Introduction to FastAPI and how to create a simple REST API for your database.
-- [04 - Intro to Docker - Part 2](04-intro-to-docker-part2.md): Containerize your API and connect it to your database manually.
-- [05 - Intro to Docker Compose](05-intro-to-docker-compose.md): Introduction to Docker Compose and how to define a multi-container application automatically.
+1. [**JSON for Beginners**](01-intro-to-json.ipynb): distinguish JSON text from Python objects, parse API responses, and validate data with Pydantic.
+2. [**Intro to Docker**](02-intro-to-docker.md): run PostgreSQL from its official image, persist its data, and inspect the database.
+3. [**Intro to FastAPI**](03-intro-to-fastapi.md): implement typed request and response contracts and a SQLAlchemy-backed CRUD API.
+4. [**FastAPI and Docker**](04-intro-to-docker-part2.md): build the API image and connect two containers over a user-defined network.
+5. [**Docker Compose**](05-intro-to-docker-compose.md): describe and operate the API and database as one multi-container application.
 
-## Environment
-
-Please make sure you **use this repository as a template** and set up a new virtual environment. You can use the following commands:
-
-### **`macOS`**
-
-```bash
-pyenv local 3.11.3
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-### **`Windows`**
-
-For `PowerShell` CLI:
-
-```PowerShell
-pyenv local 3.11.3
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-For `Git-Bash` CLI:
-
-```bash
-pyenv local 3.11.3
-python -m venv .venv
-source .venv/Scripts/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-The [requirements.txt](requirements.txt) file contains all libraries and dependencies needed to execute the notebooks.
-
-## Setup
-
-- You will need **Docker Desktop** installed and running on your machine. If you do not have it installed, please follow the [installation instructions](https://docs.docker.com/get-docker/).
-
-- Installing **psql** is helpful if you want to connect to PostgreSQL from your machine, but the Docker lessons also include a `docker exec ... psql` fallback if you prefer not to install it locally.
-
-### **`macOS`**
-
-```sh
-# To install psql
-brew install postgresql@17
-
-# To start services
-brew services start postgresql@17
-
-# To stop services
-brew services stop postgresql@17
-```
-
-In case `psql` doesn't work:
-
-```sh
-brew install libpq
-brew link --force libpq
-```
-
-### **`Windows`**
-
-Please follow the [installation instructions](https://www.w3schools.com/postgresql/postgresql_install.php).
-
-## Diagram
-
-When you are done with the repository this is the structure you will have created:
+## Architecture
 
 ```mermaid
-graph TD
-    %% --- Subgraphs for Organization ---
-    subgraph Client [Client Environment]
-        C[Web Browser or cURL]
-    end
-
-    subgraph Host [Docker Host / Local Machine]
-        direction LR
-        S[Docker Socket]
-        N(User-Defined Bridge Network)
-
-        subgraph FastAPI_Service [FastAPI Service]
-            DAPP(Docker Container: fastapi)
-            DAPP_FAS(FastAPI Application)
-        end
-
-        subgraph Database_Service [Database Service]
-            DDB(Docker Container: postgres)
-            DDB_PG(PostgreSQL Database)
-        end
-    end
-
-    %% --- Components & Dependencies ---
-    C -- HTTP Request --> HPN[Host Port: 8000]
-    HPN -- "-p 8000:8000 Mapping" --> DAPP
-    DAPP -- "uvicorn main:app" --> DAPP_FAS
-    DAPP_FAS -- Reads Env: DB_CONN --> N
-    DDB -- Runs --> DDB_PG
-    DDB_PG -- Persists Data --> VOL[Volume: postgres-db-volume]
-    DAPP --- N
-    DDB --- N
-    DAPP_FAS -- "SQL Queries (Host: postgres)" --> DDB
-    DDB -- Returns Data --> DAPP_FAS
-    DAPP -- HTTP Response --> HPN
-    HPN --> C
-    S -- Manages & Runs --> DAPP
-    S -- Manages & Runs --> DDB
-    S -- Creates --> N
+flowchart LR
+    Client["Browser, curl, or Swagger UI"] -->|"HTTP and JSON"| API["FastAPI service"]
+    API -->|"Pydantic validation"| Contract["Typed API contract"]
+    API -->|"SQLAlchemy session"| DB["PostgreSQL"]
+    API -. packaged as .-> Image["Docker image"]
+    Image --> Stack["Docker Compose stack"]
+    DB --> Stack
 ```
+
+The first three lessons expose each boundary separately. The final two preserve the same API and database contract while changing where the processes run and how their configuration is supplied.
 
 ## Learning Objectives
 
 By the end of this repository, you should be able to:
 
-- Explain the difference between JSON text and Python objects.
-- Read, write, and validate JSON data in Python.
-- Run PostgreSQL in Docker and connect to it from your machine or from inside a container.
-- Build a small CRUD API with FastAPI, Pydantic, and SQLAlchemy.
-- Containerize the FastAPI app with Docker.
-- Connect multiple containers over a shared Docker network.
-- Run the API and database together with Docker Compose.
+- Build a REST API with FastAPI using typed Pydantic request and response models.
+- Implement CRUD endpoints that read from and write to PostgreSQL through SQLAlchemy sessions.
+- Write a Dockerfile for the Python API and run the API and database together with Docker Compose.
+
+## Prerequisites
+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) for Python 3.13 and dependency management
+- [Docker Desktop](https://docs.docker.com/desktop/) with the `docker compose` command
+- [VS Code](https://code.visualstudio.com/) or another editor that supports Jupyter notebooks
+
+Installing `psql` locally is optional. The Docker lesson includes a `docker exec ... psql` command that works without a host installation.
+
+## Setup
+
+> [!NOTE]
+> Text in angle brackets such as `<repo-name>` is a placeholder. Replace the complete placeholder, including the brackets, with your own value.
+
+### 1. Create the Repository from the Template
+
+Click **Use this template** on GitHub. Choose yourself as the owner, give the repository a name, and disable **Include all branches**.
+
+When working in a group, one person creates the repository and then adds the other participants under **Settings -> Collaborators**.
+
+### 2. Clone and Enter the Repository
+
+```bash
+git clone <copied-ssh-url>
+cd <repo-name>
+```
+
+### 3. Install the Python Environment
+
+The lockfile records the complete dependency set. This command installs Python 3.13 when needed and creates `.venv/` automatically:
+
+```bash
+uv sync --locked
+```
+
+### 4. Create Local Configuration
+
+```bash
+cp .env.example .env
+```
+
+The supplied values are development-only credentials for the local PostgreSQL container. Do not reuse them for a shared or production database.
+
+### 5. Open the Project
+
+```bash
+code .
+```
+
+Select the `.venv` environment created by `uv sync` when VS Code asks for a notebook kernel.
+
+## Run the Complete Stack
+
+After creating `.env`, build the API image and start PostgreSQL and FastAPI:
+
+```bash
+docker compose up --build --wait
+curl http://localhost:8000/
+docker compose down
+```
+
+The expected health response is:
+
+```json
+{"status":"ok"}
+```
+
+## Repository Structure
+
+```text
+.
+├── assets/                     # sourced visual aids used in the lessons
+├── data/                       # JSON files generated by the notebook
+├── service/                    # FastAPI application and API Dockerfile
+├── 01-intro-to-json.ipynb
+├── 02-intro-to-docker.md
+├── 03-intro-to-fastapi.md
+├── 04-intro-to-docker-part2.md
+├── 05-intro-to-docker-compose.md
+├── docker-compose.yaml
+├── pyproject.toml
+└── uv.lock
+```
+
+## References and Further Reading
+
+- [FastAPI tutorial](https://fastapi.tiangolo.com/tutorial/)
+- [SQLAlchemy Unified Tutorial](https://docs.sqlalchemy.org/en/20/tutorial/)
+- [Pydantic models](https://docs.pydantic.dev/latest/concepts/models/)
+- [Docker networking overview](https://docs.docker.com/engine/network/)
+- [Docker Compose getting started](https://docs.docker.com/compose/gettingstarted/)

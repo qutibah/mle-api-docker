@@ -1,17 +1,26 @@
 import os
+from collections.abc import Generator
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 load_dotenv()
 
-SQLALCHEMY_DATABASE_URI = os.getenv("DB_CONN")
+DATABASE_URL = os.getenv("DB_CONN")
 
-if SQLALCHEMY_DATABASE_URI is None:
+if DATABASE_URL is None:
     raise ValueError("DB_CONN environment variable is required")
 
-engine = create_engine(SQLALCHEMY_DATABASE_URI)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Base class shared by the service's SQLAlchemy models."""
+
+
+def get_db() -> Generator[Session]:
+    """Yield one database session for a request, then close it."""
+    with SessionLocal() as session:
+        yield session

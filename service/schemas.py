@@ -1,25 +1,24 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
-class UserModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class UserBase(BaseModel):
+    """Fields shared by user creation, update, and response contracts."""
 
-    name: str
-    email: str
-    password: str
+    name: str = Field(min_length=1, max_length=100)
+    email: EmailStr
 
 
-class UserOut(BaseModel):
+class UserCreate(UserBase):
+    """Request body used to create a user."""
+
+
+class UserUpdate(UserBase):
+    """Request body used to replace a user."""
+
+
+class UserOut(UserBase):
+    """Response body returned for persisted users."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    name: str
-    email: str
-
-
-class UserUpdate(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    name: str
-    email: str
-    password: str
