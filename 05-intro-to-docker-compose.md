@@ -15,6 +15,8 @@ flowchart LR
 
 Compose automatically creates a project network. Service names become DNS hostnames on that network, so the API connects to `db`, not `localhost`.
 
+Compose also prefixes volume names with the project name. Its `postgres-data` volume is separate from the unprefixed volume used in lessons 2 and 4, so the first Compose run starts with a new database. Later Compose runs reuse that database unless its volume is removed.
+
 ## The Compose File
 
 [`docker-compose.yaml`](docker-compose.yaml) defines the complete stack:

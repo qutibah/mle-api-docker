@@ -97,6 +97,8 @@ docker exec postgres_cont pg_isready -U postgres -d fastapi_db
 
 ## Start the API Container
 
+Stop the host-based Uvicorn process from lesson 3 with `Ctrl+C` in its terminal before starting the container. This frees port `8000` for the containerized API.
+
 ```bash
 docker run -d --name fastapi_cont \
     --network api-network \
@@ -132,7 +134,7 @@ docker rm -f fastapi_cont postgres_cont
 docker network rm api-network
 ```
 
-The named `postgres-data` volume remains available for the Compose lesson. Remove it only when a clean database is intentional.
+The named `postgres-data` volume is preserved for reuse with the manual Docker workflow. Lesson 5 creates a separate, project-prefixed Compose volume, so its database starts without the records created here.
 
 ## Checkpoint
 

@@ -1,7 +1,9 @@
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
+from psycopg.errors import UniqueViolation
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from service import models, schemas
@@ -33,6 +35,22 @@ def ensure_email_available(
         raise HTTPException(status_code=409, detail="Email already registered")
 
 
+def commit_user_change(db: Session) -> None:
+    """Handle email conflicts that occur after the availability check."""
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        if isinstance(exc.orig, UniqueViolation) and exc.orig.diag.constraint_name in {
+            "ix_users_email",
+            "users_email_key",
+        }:
+            raise HTTPException(
+                status_code=409, detail="Email already registered"
+            ) from exc
+        raise
+
+
 @app.get("/", tags=["health"])
 def index() -> dict[str, str]:
     """Return a lightweight service status response."""
@@ -60,7 +78,7 @@ def create_user(request: schemas.UserCreate, db: DatabaseSession) -> models.User
 
     new_user = models.User(name=request.name, email=email)
     db.add(new_user)
-    db.commit()
+    commit_user_change(db)
     db.refresh(new_user)
     return new_user
 
@@ -77,7 +95,7 @@ def update_user(
 
     existing_user.name = request.name
     existing_user.email = email
-    db.commit()
+    commit_user_change(db)
     db.refresh(existing_user)
     return existing_user
 
