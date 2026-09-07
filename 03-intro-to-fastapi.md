@@ -22,7 +22,6 @@ Each boundary has one responsibility. FastAPI handles HTTP, Pydantic owns the ex
 Create the ignored local configuration file and start the PostgreSQL container from lesson 2:
 
 ```bash
-cp .env.example .env
 docker start postgres_cont
 docker exec postgres_cont pg_isready -U postgres -d fastapi_db
 ```
