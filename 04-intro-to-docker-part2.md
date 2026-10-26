@@ -22,8 +22,12 @@ Inside a container, `localhost` refers to that same container. The API therefore
 [`service/Dockerfile`](service/Dockerfile) builds from the repository root so the lockfile and service package are both available:
 
 ```Dockerfile
-FROM ghcr.io/astral-sh/uv:0.12.6 AS uv
-FROM python:3.13-slim-bookworm
+FROM ghcr.io/astral-sh/uv:0.13.5 AS uv
+FROM python:3.13.17-slim-bookworm
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -44,7 +48,7 @@ CMD ["uv", "run", "--no-sync", "uvicorn", "service.main:app", "--host", "0.0.0.0
 | Instruction | Purpose |
 | --- | --- |
 | `FROM ... uv` | Provide the versioned uv binary from its official image |
-| `FROM python:3.13-slim-bookworm` | Use the required Python runtime on a small Debian base |
+| `FROM python:3.13.17-slim-bookworm` | Use the required Python runtime on a small Debian base |
 | `COPY pyproject.toml uv.lock` | Copy dependency metadata before application code for layer caching |
 | `uv sync --locked --no-dev` | Install exactly the locked runtime dependencies |
 | `COPY service ./service` | Add only the application package after dependencies |

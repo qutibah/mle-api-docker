@@ -1,5 +1,9 @@
-FROM ghcr.io/astral-sh/uv:0.12.6 AS uv
-FROM python:3.13-slim-bookworm
+FROM ghcr.io/astral-sh/uv:0.13.5 AS uv
+FROM python:3.13.17-slim-bookworm
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

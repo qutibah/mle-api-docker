@@ -42,6 +42,12 @@ Installing `psql` locally is optional. The Docker lesson includes a `docker exec
 
 ## Setup
 
+Use [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.13.5 or newer
+and Python 3.13.17 or newer. Python 3.13.18 is recommended when available.
+
+Rebuild existing Docker images with `--pull --no-cache` after this update
+to refresh their system certificates and dependencies.
+
 > [!NOTE]
 > Text in angle brackets such as `<repo-name>` is a placeholder. Replace the complete placeholder, including the brackets, with your own value.
 
